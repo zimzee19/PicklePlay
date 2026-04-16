@@ -55,6 +55,11 @@
             box-shadow: var(--card-shadow);
         }
 
+        /* Minimize Login CSS */
+        #loginSection { overflow: hidden; transition: all 0.3s ease; }
+        .login-fields { display: none; margin-top: 15px; }
+        .login-fields.expanded { display: block; }
+
         .rules-box {
             background: #fff9c4;
             padding: 20px;
@@ -125,10 +130,12 @@
 <div class="main-layout">
     <aside>
         <section id="loginSection" class="card">
-            <h3>Admin Login</h3>
-            <input type="email" id="adminEmail" class="login-input" placeholder="Admin Email">
-            <input type="password" id="adminPass" class="login-input" placeholder="Password">
-            <button class="btn btn-primary" style="width:100%" onclick="handleLogin()">Login</button>
+            <button id="toggleLoginBtn" class="btn btn-outline" style="width:100%" onclick="toggleLoginFields()">Admin Access</button>
+            <div id="loginFields" class="login-fields">
+                <input type="email" id="adminEmail" class="login-input" placeholder="Admin Email">
+                <input type="password" id="adminPass" class="login-input" placeholder="Password">
+                <button class="btn btn-primary" style="width:100%" onclick="handleLogin()">Login</button>
+            </div>
         </section>
 
         <section id="adminDashboard" class="card admin-only">
@@ -204,10 +211,22 @@
     let selectedSwap = null; 
     let blinkingCourts = new Set();
 
+    function toggleLoginFields() {
+        const fields = document.getElementById('loginFields');
+        const btn = document.getElementById('toggleLoginBtn');
+        fields.classList.toggle('expanded');
+        btn.innerText = fields.classList.contains('expanded') ? 'Cancel' : 'Admin Access';
+    }
+
     auth.onAuthStateChanged((user) => {
         state.isAdmin = !!user;
         document.body.className = user ? 'is-admin' : 'user-mode';
         document.getElementById('loginSection').style.display = user ? 'none' : 'block';
+        // Reset login toggle on logout
+        if(!user) {
+            document.getElementById('loginFields').classList.remove('expanded');
+            document.getElementById('toggleLoginBtn').innerText = 'Admin Access';
+        }
         render(false);
     });
 
@@ -233,7 +252,6 @@
     stateRef.on('value', (snapshot) => {
         const cloudData = snapshot.val();
         if (cloudData) {
-            // Only trigger if this is an update we haven't processed yet
             if (cloudData.lastUpdate && cloudData.lastUpdate.timestamp > state.lastUpdate.timestamp) {
                 const idx = cloudData.lastUpdate.courtIdx;
                 if (idx !== -1 && cloudData.courts && cloudData.courts[idx]) {
@@ -265,7 +283,7 @@
         state.sessionActive = true;
         state.mode = document.getElementById('playMode').value;
         state.lastUpdate = { timestamp: Date.now(), courtIdx: -1 };
-        fillCourts(true); // true means show popup
+        fillCourts(true);
         render(true);
     }
 
@@ -362,7 +380,7 @@
             c.teamB = stayers.slice(1, 2);
         }
         
-        fillCourts(true); // Pass true to trigger the popup on THIS session
+        fillCourts(true);
         render(true);
     }
 
@@ -371,7 +389,6 @@
         const el = document.getElementById('matchNotification');
         document.getElementById('matchNames').innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
         el.style.display = 'block';
-        // Increased clear time slightly to ensure user sees it
         setTimeout(() => { el.style.display = 'none'; }, 6000);
     }
 
