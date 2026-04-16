@@ -289,23 +289,43 @@ const firebaseConfig = {
         });
     }
 
-    stateRef.on('value', (snapshot) => {
-        const cloudData = snapshot.val();
-        if (cloudData) {
-            state.sessionActive = cloudData.sessionActive;
-            state.mode = cloudData.mode;
-            state.numCourts = cloudData.numCourts;
-            state.players = cloudData.players || [];
-            state.courts = cloudData.courts || [];
-            
-            document.getElementById('playMode').value = state.mode;
-            document.getElementById('courtCountDisplay').innerText = state.numCourts;
-            document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
-            
-            updateRulesUI();
-            render(false);
+    // --- IMPROVED SYNC LISTENER ---
+stateRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        // 1. Capture what we currently have before updating
+        const oldCourts = JSON.parse(JSON.stringify(state.courts));
+        
+        // 2. Update the local state with new cloud data
+        state.mode = data.mode || '4on';
+        state.numCourts = data.numCourts || 1;
+        state.players = data.players || [];
+        state.courts = data.courts || [];
+        
+        // 3. COMPARE: If this isn't the first load, check for changes
+        if (oldCourts.length > 0) {
+            state.courts.forEach((court, i) => {
+                const oldCourt = oldCourts[i];
+                
+                // Detection Logic: 
+                // Was the court NOT full before, but it IS full now?
+                const isNowFull = (court.teamA.length + court.teamB.length) === 4;
+                const wasNotFull = !oldCourt || (oldCourt.teamA.length + oldCourt.teamB.length) < 4;
+
+                if (isNowFull && wasNotFull) {
+                    // This triggers on EVERY device that receives this update
+                    triggerMobileBlink(i);
+                    triggerMobilePopup(court);
+                }
+            });
         }
-    });
+
+        // 4. Sync UI elements and Render
+        document.getElementById('playMode').value = state.mode;
+        document.getElementById('courtCountDisplay').innerText = state.numCourts;
+        render(false); // Render UI without pushing back to cloud
+    }
+});
 
     // --- 4. CORE APP FUNCTIONS ---
     function showMatchPopup(courtName, teamA, teamB) {
