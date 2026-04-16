@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pickleball Pro Sync</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickleball Pro Open Play (Sync Mode)</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     
@@ -13,128 +12,246 @@
             --primary: #2e7d32;
             --accent: #c6ff00;
             --dark: #1b5e20;
+            --light: #f1f8e9;
             --danger: #d32f2f;
+            --card-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background-color: #f0f2f0;
             margin: 0;
+            color: #333;
             padding-bottom: 50px;
-            overflow-x: hidden;
         }
 
-        /* MOBILE OPTIMIZED POPUP */
-        #matchNotification {
-            position: fixed;
-            top: 10px; /* Closer to top for mobile */
-            left: 50%;
-            transform: translateX(-50%) translateY(-20px);
-            z-index: 10000;
-            background: #1b5e20;
+        header {
+            background-color: var(--primary);
             color: white;
-            padding: 15px 25px;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-            border: 2px solid var(--accent);
+            padding: 1rem;
             text-align: center;
-            display: none;
-            width: 85%; /* Wider on mobile */
-            max-width: 400px;
-            transition: all 0.3s ease;
-            pointer-events: none; /* Allows clicking through it */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        #matchNotification.show {
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 25px;
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .rules-box {
+            background: #fff9c4;
+            padding: 20px;
+            border: 2px solid #fbc02d;
+            margin-bottom: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .rules-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #af8600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
             display: block;
-            transform: translateX(-50%) translateY(0);
         }
 
-        /* MOBILE OPTIMIZED BLINK */
+        .rules-content { font-size: 1.2rem; font-weight: 600; }
+
+        .courts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
         .court {
             border: 4px solid var(--primary);
             border-radius: 15px;
-            padding: 15px;
+            padding: 20px;
             background: white;
-            margin-bottom: 15px;
-            transition: border-color 0.3s ease;
+            transition: background-color 0.5s ease;
         }
 
+        /* NEW: Court Blink Animation */
         .blink-update {
-            animation: mobileBlink 1.2s ease-in-out infinite;
-            border-color: #fbc02d !important;
+            animation: yellowPulse 1.5s infinite;
         }
 
-        @keyframes mobileBlink {
+        @keyframes yellowPulse {
             0% { background-color: white; }
-            50% { background-color: #fff9c4; }
+            50% { background-color: #fffde7; border-color: #fbc02d; }
             100% { background-color: white; }
         }
 
-        /* REST OF YOUR STYLES (Keep the same) */
-        header { background: var(--primary); color: white; padding: 15px; text-align: center; }
-        .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 15px; }
-        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
-        .card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .courts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
-        .match-area { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 5px; }
-        .team-box { background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; padding: 10px; min-height: 120px; }
-        .player-slot { padding: 8px; margin-bottom: 5px; background: white; border-radius: 5px; border: 1px solid #ddd; font-size: 0.9rem;}
-        .vs-circle { background: var(--primary); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 40px auto 0; font-weight: bold; }
-        .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;}
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-sm { padding: 6px; font-size: 0.75rem; width: auto; margin: 0; }
+        /* NEW: Match Popup Notification */
+        #matchNotification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            background: var(--dark);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 3px solid var(--accent);
+            text-align: center;
+            display: none;
+            min-width: 300px;
+        }
+
+        .match-area {
+            display: grid;
+            grid-template-columns: 1fr 40px 1fr;
+            gap: 10px;
+            align-items: start;
+            text-align: center;
+        }
+
+        .team-box {
+            padding: 10px;
+            background: #fdfdfd;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            min-height: 150px;
+        }
+
+        .player-slot {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .selected-for-swap {
+            background-color: var(--accent) !important;
+            border: 1px solid var(--dark) !important;
+            color: var(--dark) !important;
+        }
+
+        .vs-circle {
+            background: var(--primary); color: white;
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 60px auto 0; font-weight: bold; font-size: 0.8rem;
+        }
+
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: var(--primary); color: white; width: 100%; }
+        .btn-accent { background: var(--accent); color: var(--dark); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 0.7rem; }
+
+        .queue-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; background: white; border: 1px solid #ddd;
+            margin-bottom: 8px; border-radius: 8px;
+        }
+
         .admin-only { display: none; }
         .is-admin .admin-only { display: block; }
         .is-admin .user-only { display: none; }
         .hidden { display: none !important; }
-        .tag-sit { color: var(--danger); font-size: 0.7rem; display: block; margin-top: 5px; text-decoration: underline; }
+        .tag-sit { cursor: pointer; color: var(--danger); font-size: 0.7rem; text-decoration: underline; display: block; margin-top: 4px;}
     </style>
 </head>
 <body class="user-mode">
 
 <div id="matchNotification">
-    <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--accent); letter-spacing: 1px;">Next Players Up</div>
-    <div id="matchNames" style="font-size: 1.1rem; font-weight: bold; margin-top: 5px; line-height: 1.3;"></div>
+    <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--accent);">Next Match Up</div>
+    <div id="matchNames" style="font-size: 1.2rem; font-weight: bold; margin-top: 5px;"></div>
 </div>
 
 <header>
-    <h1 style="margin:0; font-size: 1.5rem;">Pickleball Open Play</h1>
-    <div id="status-bar" style="font-size: 0.8rem; opacity: 0.8;">Connecting...</div>
+    <h1>Pickleball Open Play</h1>
+    <div id="status-bar">Syncing with Cloud...</div>
 </header>
 
 <div class="main-layout">
     <aside>
-        <div id="loginSection" class="card user-only">
-            <input type="password" id="adminPass" placeholder="Admin PW" style="width: 60%; padding: 10px;">
-            <button class="btn btn-sm btn-primary" onclick="checkAdmin()">Login</button>
-        </div>
-        <div id="adminDashboard" class="card admin-only">
-            <button class="btn btn-danger btn-sm" onclick="endSession()">Reset All</button>
-            <select id="playMode" onchange="updateMode()" style="margin: 10px 0; width: 100%; padding: 8px;">
-                <option value="4on">4 on / 4 off</option>
-                <option value="2on">2 on / 2 off</option>
-            </select>
-            <div style="text-align: center;">
-                Courts: <button class="btn btn-sm" onclick="changeCourts(-1)">-</button>
-                <span id="courtCountDisplay" style="font-weight:bold; margin: 0 10px;">1</span>
+        <section id="loginSection" class="card user-only">
+            <input type="password" id="adminPass" placeholder="Admin PW" style="width: 70%; padding: 8px;">
+            <button class="btn btn-sm btn-primary" onclick="checkAdmin()" style="width: auto;">Login</button>
+        </section>
+
+        <section id="adminDashboard" class="card admin-only">
+            <h3>Admin Controls</h3>
+            <button class="btn btn-accent btn-sm" id="startBtn" onclick="startSession()">Start Session</button>
+            <button class="btn btn-danger btn-sm" onclick="endSession()">End Session</button>
+            <hr>
+            <div style="margin: 10px 0;">
+                <label>Mode: </label>
+                <select id="playMode" onchange="updateMode()">
+                    <option value="4on">4 on / 4 off</option>
+                    <option value="2on">2 on / 2 off</option>
+                </select>
+            </div>
+            <div>
+                <label>Courts: </label>
+                <button class="btn btn-sm" onclick="changeCourts(-1)">-</button>
+                <span id="courtCountDisplay" style="font-weight:bold;">1</span>
                 <button class="btn btn-sm" onclick="changeCourts(1)">+</button>
             </div>
+            <button class="btn btn-sm" onclick="logout()" style="margin-top:10px; width:100%">Logout Admin</button>
+        </section>
+
+        <section class="card">
+            <input type="text" id="playerName" placeholder="Enter Player Name..." 
+                   style="width: 100%; padding: 12px; box-sizing: border-box; margin-bottom: 10px;" 
+                   onkeypress="if(event.key === 'Enter') joinQueue()">
+            <button class="btn btn-primary" onclick="joinQueue()">Add to Queue</button>
+        </section>
+
+        <div class="stats-bar">
+            <span>Total: <span id="totalCount">0</span></span>
+            <span>Queue: <span id="queueCount">0</span></span>
         </div>
-        <div class="card">
-            <input type="text" id="playerName" placeholder="Player Name" style="width:100%; padding:12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
-            <button class="btn btn-primary" onclick="joinQueue()">Join Queue</button>
-        </div>
+
+        <h3>Waiting Queue</h3>
         <div id="queueList"></div>
     </aside>
 
     <main>
+        <div id="rulesDisplay" class="rules-box">
+            <span class="rules-title">Current Rotation: <span id="modeNameDisplay">4 on / 4 off</span></span>
+            <div id="rulesText" class="rules-content">Rotate all players.</div>
+        </div>
         <div id="courtsContainer" class="courts-grid"></div>
     </main>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
+    // --- 1. CONFIGURATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyDcXbm3UCGro4A3NPEEAHfp6ngNQ8ZtMUQ",
     authDomain: "pickleplay-59ba8.firebaseapp.com",
@@ -149,127 +266,180 @@ const firebaseConfig = {
     const db = firebase.database();
     const stateRef = db.ref('pickleball_state');
 
-    let state = { isAdmin: false, sessionActive: true, mode: '4on', numCourts: 1, players: [], courts: [] };
-    let blinkingCourts = new Set();
-    let selectedPlayer = null;
+    // --- 2. GLOBAL STATE ---
+    let state = {
+        isAdmin: false,
+        sessionActive: false,
+        mode: '4on',
+        numCourts: 1,
+        players: [],
+        courts: [] 
+    };
+    let selectedPlayer = null; 
+    let blinkingCourts = new Set(); // To track which courts should blink
 
-    // --- SYNC ---
-// --- IMPROVED SYNC LISTENER ---
-stateRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-        // 1. Capture what we currently have before updating
-        const oldCourts = JSON.parse(JSON.stringify(state.courts));
-        
-        // 2. Update the local state with new cloud data
-        state.mode = data.mode || '4on';
-        state.numCourts = data.numCourts || 1;
-        state.players = data.players || [];
-        state.courts = data.courts || [];
-        
-        // 3. COMPARE: If this isn't the first load, check for changes
-        if (oldCourts.length > 0) {
-            state.courts.forEach((court, i) => {
-                const oldCourt = oldCourts[i];
-                
-                // Detection Logic: 
-                // Was the court NOT full before, but it IS full now?
-                const isNowFull = (court.teamA.length + court.teamB.length) === 4;
-                const wasNotFull = !oldCourt || (oldCourt.teamA.length + oldCourt.teamB.length) < 4;
-
-                if (isNowFull && wasNotFull) {
-                    // This triggers on EVERY device that receives this update
-                    triggerMobileBlink(i);
-                    triggerMobilePopup(court);
-                }
-            });
-        }
-
-        // 4. Sync UI elements and Render
-        document.getElementById('playMode').value = state.mode;
-        document.getElementById('courtCountDisplay').innerText = state.numCourts;
-        render(false); // Render UI without pushing back to cloud
-    }
-});
-
+    // --- 3. SYNC LOGIC ---
     function pushToCloud() {
-        stateRef.set({ mode: state.mode, numCourts: state.numCourts, players: state.players, courts: state.courts });
-    }
-
-    // Detect if a court just got new players
-    function detectNewMatches(oldC, newC) {
-        newC.forEach((court, i) => {
-            const oldCourt = oldC[i];
-            const isNowFull = (court.teamA.length + court.teamB.length) === 4;
-            const wasNotFull = !oldCourt || (oldCourt.teamA.length + oldCourt.teamB.length) < 4;
-
-            if (isNowFull && wasNotFull) {
-                triggerMobileBlink(i);
-                triggerMobilePopup(court);
-            }
+        stateRef.set({
+            sessionActive: state.sessionActive,
+            mode: state.mode,
+            numCourts: state.numCourts,
+            players: state.players,
+            courts: state.courts
         });
     }
 
-    function triggerMobileBlink(idx) {
-        blinkingCourts.add(idx);
-        render(false);
-        setTimeout(() => {
-            blinkingCourts.delete(idx);
+    stateRef.on('value', (snapshot) => {
+        const cloudData = snapshot.val();
+        if (cloudData) {
+            state.sessionActive = cloudData.sessionActive;
+            state.mode = cloudData.mode;
+            state.numCourts = cloudData.numCourts;
+            state.players = cloudData.players || [];
+            state.courts = cloudData.courts || [];
+            
+            document.getElementById('playMode').value = state.mode;
+            document.getElementById('courtCountDisplay').innerText = state.numCourts;
+            document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
+            
+            updateRulesUI();
             render(false);
-        }, 4000);
-    }
+        }
+    });
 
-    function triggerMobilePopup(court) {
-        const names = [...court.teamA, ...court.teamB].map(p => p.name).join(' • ');
-        const popup = document.getElementById('matchNotification');
+    // --- 4. CORE APP FUNCTIONS ---
+    function showMatchPopup(courtName, teamA, teamB) {
+        const names = [...teamA, ...teamB].map(p => p.name).join(' & ');
+        const el = document.getElementById('matchNotification');
         const text = document.getElementById('matchNames');
         
-        text.innerHTML = `<span style="color:var(--accent)">${court.name}</span><br>${names}`;
-        popup.classList.add('show');
+        text.innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
+        el.style.display = 'block';
         
-        // Mobile browsers handle timeouts better this way
-        setTimeout(() => { popup.classList.remove('show'); }, 5000);
+        setTimeout(() => { el.style.display = 'none'; }, 6000);
     }
 
-    // --- LOGIC ---
     function checkAdmin() {
         if (document.getElementById('adminPass').value === 'admin123') {
             state.isAdmin = true;
             document.body.className = 'is-admin';
-            document.getElementById('status-bar').innerText = "Mode: Administrator";
-            render(false);
-        }
+            render(true);
+        } else { alert("Incorrect Password"); }
     }
 
-    function joinQueue() {
-        const name = document.getElementById('playerName').value;
-        if (!name) return;
-        state.players.push({ id: Date.now(), name: name, gamesInRow: 0 });
-        document.getElementById('playerName').value = '';
+    function logout() {
+        state.isAdmin = false;
+        document.body.className = 'user-mode';
+        render(false);
+    }
+
+    function startSession() {
+        state.sessionActive = true;
+        updateMode();
         fillCourts();
+        render(true);
+    }
+
+    function endSession() {
+        if(!confirm("End session and clear cloud data?")) return;
+        state.sessionActive = false;
+        state.players = [];
+        state.courts = [];
         pushToCloud();
     }
 
+    function updateMode() {
+        state.mode = document.getElementById('playMode').value;
+        updateRulesUI();
+        render(true);
+    }
+
+    function updateRulesUI() {
+        const rules = document.getElementById('rulesText');
+        const modeLabel = document.getElementById('modeNameDisplay');
+        if (state.mode === '4on') {
+            modeLabel.innerText = "4 on / 4 off";
+            rules.innerText = "All players rotate out after the match.";
+        } else {
+            modeLabel.innerText = "2 on / 2 off";
+            rules.innerHTML = "• Winners stay & split<br>• Max 2 consecutive games";
+        }
+    }
+
+    function changeCourts(val) {
+        state.numCourts = Math.max(1, state.numCourts + val);
+        if(state.sessionActive) fillCourts();
+        render(true);
+    }
+
+    function joinQueue() {
+        const input = document.getElementById('playerName');
+        if (!input.value.trim()) return;
+        state.players.push({ id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 });
+        input.value = '';
+        if(state.sessionActive) fillCourts();
+        render(true);
+    }
+
     function fillCourts() {
-        // Ensure court array matches court count
+        if (!state.sessionActive) return;
         while (state.courts.length < state.numCourts) {
             state.courts.push({ name: `Court ${state.courts.length + 1}`, teamA: [], teamB: [] });
         }
-        state.courts.forEach(c => {
+        while (state.courts.length > state.numCourts) {
+            const c = state.courts.pop();
+            state.players.unshift(...c.teamA, ...c.teamB);
+        }
+        state.courts.forEach((c, idx) => {
+            let newlyFilled = false;
             while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
+                newlyFilled = true;
                 if (c.teamA.length < 2) c.teamA.push(state.players.shift());
                 else c.teamB.push(state.players.shift());
             }
+            if(newlyFilled) {
+                triggerCourtBlink(idx);
+                showMatchPopup(c.name, c.teamA, c.teamB);
+            }
         });
+    }
+
+    function triggerCourtBlink(idx) {
+        blinkingCourts.add(idx);
+        setTimeout(() => {
+            blinkingCourts.delete(idx);
+            render(false);
+        }, 5000); // Blink for 5 seconds
+    }
+
+    function handlePlayerClick(cIdx, pId, team) {
+        if (!selectedPlayer) {
+            selectedPlayer = { cIdx, pId, team };
+            render(false);
+        } else {
+            const court = state.courts[cIdx];
+            if (selectedPlayer.cIdx !== cIdx || selectedPlayer.pId === pId) {
+                selectedPlayer = (selectedPlayer.pId === pId) ? null : { cIdx, pId, team }; 
+                render(false);
+                return;
+            }
+            const teamSrc = selectedPlayer.team === 'A' ? court.teamA : court.teamB;
+            const teamDest = team === 'A' ? court.teamA : court.teamB;
+            const srcIdx = teamSrc.findIndex(x => x.id === selectedPlayer.pId);
+            const destIdx = teamDest.findIndex(x => x.id === pId);
+            const temp = teamSrc[srcIdx];
+            teamSrc[srcIdx] = teamDest[destIdx];
+            teamDest[destIdx] = temp;
+            selectedPlayer = null;
+            render(true);
+        }
     }
 
     function finishMatch(idx, winTeam) {
         const c = state.courts[idx];
         const winners = winTeam === 'A' ? c.teamA : c.teamB;
         const losers = winTeam === 'A' ? c.teamB : c.teamA;
-        
         losers.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
-        
         if (state.mode === '4on') {
             winners.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
             c.teamA = []; c.teamB = [];
@@ -281,79 +451,87 @@ stateRef.on('value', (snapshot) => {
             c.teamB = stayers.slice(1, 2);
         }
         fillCourts();
-        pushToCloud();
+        render(true);
     }
 
-    function changeCourts(val) {
-        state.numCourts = Math.max(1, state.numCourts + val);
-        fillCourts();
-        pushToCloud();
-    }
-
-    function updateMode() {
-        state.mode = document.getElementById('playMode').value;
-        pushToCloud();
-    }
-
-    function endSession() {
-        if(confirm("Reset Everything?")) {
-            state.players = [];
-            state.courts = [];
-            pushToCloud();
+    function sitOut(cIdx, pId, fromTeam) {
+        const court = state.courts[cIdx];
+        let p;
+        if(fromTeam === 'A') {
+            const idx = court.teamA.findIndex(x => x.id === pId);
+            p = court.teamA.splice(idx, 1)[0];
+        } else {
+            const idx = court.teamB.findIndex(x => x.id === pId);
+            p = court.teamB.splice(idx, 1)[0];
         }
+        p.gamesInRow = 0;
+        state.players.push(p);
+        fillCourts();
+        render(true);
     }
 
+    // --- 5. RENDER ENGINE ---
     function render(push = true) {
         if (push) pushToCloud();
-        
-        document.getElementById('courtCountDisplay').innerText = state.numCourts;
+
+        document.getElementById('startBtn').className = state.sessionActive ? "hidden" : "btn btn-accent btn-sm";
+        let onCourt = 0;
+        state.courts.forEach(c => onCourt += (c.teamA.length + c.teamB.length));
+        document.getElementById('totalCount').innerText = onCourt + state.players.length;
+        document.getElementById('queueCount').innerText = state.players.length;
+
+        const qList = document.getElementById('queueList');
+        qList.innerHTML = '';
+        state.players.forEach((p, i) => {
+            const div = document.createElement('div');
+            div.className = 'queue-item';
+            div.innerHTML = `<span>${i + 1}. <b>${p.name}</b></span>
+                <button class="btn btn-danger btn-sm" onclick="state.players.splice(${i}, 1); render(true);">×</button>`;
+            qList.appendChild(div);
+        });
+
         const container = document.getElementById('courtsContainer');
         container.innerHTML = '';
+        if(!state.sessionActive) {
+            container.innerHTML = "<h3 style='text-align:center; padding: 50px; color:#666;'>No active session. Admin please log in to start.</h3>";
+            return;
+        }
 
         state.courts.forEach((c, i) => {
             const isFull = (c.teamA.length + c.teamB.length) === 4;
-            const div = document.createElement('div');
-            div.className = `court ${blinkingCourts.has(i) ? 'blink-update' : ''}`;
+            const courtDiv = document.createElement('div');
+            // ADD BLINK CLASS IF INDEX IN SET
+            courtDiv.className = `court ${blinkingCourts.has(i) ? 'blink-update' : ''}`;
             
-            const renderP = (p, team) => `
-                <div class="player-slot">
+            const renderTeam = (teamArr, teamChar) => teamArr.map(p => `
+                <div class="player-slot ${selectedPlayer && selectedPlayer.pId === p.id ? 'selected-for-swap' : ''}" 
+                     onclick="handlePlayerClick(${i}, ${p.id}, '${teamChar}')" style="cursor:pointer;">
                     <b>${p.name}</b>
-                    <span class="tag-sit" onclick="sitOut(${i}, '${p.id}', '${team}')">Sit Out</span>
-                </div>`;
+                    <span class="tag-sit" onclick="event.stopPropagation(); sitOut(${i}, ${p.id}, '${teamChar}')">Sit Out</span>
+                    <small style="font-size:0.65rem; opacity:0.8;">(Click to swap)</small>
+                </div>`).join('');
 
-            div.innerHTML = `
-                <div style="font-weight:bold; margin-bottom:10px;">${c.name}</div>
-                <div class="match-area">
-                    <div class="team-box">${c.teamA.map(p => renderP(p, 'A')).join('')}</div>
-                    <div class="vs-circle">VS</div>
-                    <div class="team-box">${c.teamB.map(p => renderP(p, 'B')).join('')}</div>
+            courtDiv.innerHTML = `
+                <div class="court-header">
+                    <input type="text" class="court-name-input" value="${c.name}" ${state.isAdmin ? "" : "readonly"} onchange="state.courts[${i}].name=this.value; render(true);">
                 </div>
-                <div style="display:flex; gap:5px; margin-top:10px;">
+                <div class="match-area">
+                    <div class="team-box">
+                        <small style="color:var(--primary); font-weight:900">TEAM 1</small><hr>
+                        ${renderTeam(c.teamA, 'A')}
+                    </div>
+                    <div class="vs-circle">VS</div>
+                    <div class="team-box">
+                        <small style="color:var(--primary); font-weight:900">TEAM 2</small><hr>
+                        ${renderTeam(c.teamB, 'B')}
+                    </div>
+                </div>
+                <div style="margin-top:20px; display:flex; gap:10px;">
                     <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'A')" ${!isFull ? 'disabled' : ''}>T1 Wins</button>
                     <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'B')" ${!isFull ? 'disabled' : ''}>T2 Wins</button>
-                </div>
-            `;
-            container.appendChild(div);
+                </div>`;
+            container.appendChild(courtDiv);
         });
-
-        const qList = document.getElementById('queueList');
-        qList.innerHTML = '<h3>Queue</h3>';
-        state.players.forEach((p, i) => {
-            qList.innerHTML += `<div class="card" style="padding:10px; margin-bottom:5px;">${i+1}. ${p.name}</div>`;
-        });
-    }
-
-    function sitOut(cIdx, pId, team) {
-        const court = state.courts[cIdx];
-        const arr = team === 'A' ? court.teamA : court.teamB;
-        const pIdx = arr.findIndex(p => p.id == pId);
-        if (pIdx > -1) {
-            const p = arr.splice(pIdx, 1)[0];
-            p.gamesInRow = 0;
-            state.players.push(p);
-            fillCourts();
-            pushToCloud();
-        }
     }
 </script>
 </body>
