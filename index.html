@@ -235,280 +235,150 @@
     </main>
 </div>
 
-<script>
-    // INITIAL STATE & LOCALSTORAGE LOAD
-    let state = {
-        isAdmin: false,
-        sessionActive: false,
-        mode: '4on',
-        numCourts: 1,
-        players: [],
-        courts: [] 
-    };
+<script type="module">
+// 1. Import Firebase (Place this at the top of your script)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    let selectedPlayer = null; 
+// 2. PASTE YOUR CONFIG FROM STEP 1 HERE
+const firebaseConfig = {
+    apiKey: "AIzaSyDcXbm3UCGro4A3NPEEAHfp6ngNQ8ZtMUQ",
+    authDomain: "pickleplay-59ba8.firebaseapp.com",
+    databaseURL: "https://pickleplay-59ba8-default-rtdb.firebaseio.com",
+    projectId: "pickleplay-59ba8",
+    storageBucket: "pickleplay-59ba8.firebasestorage.app",
+    messagingSenderId: "167188727754",
+    appId: "1:167188727754:web:783381a771775130e17133"
+  };
 
-    // SAVE DATA TO BROWSER
-    function saveData() {
-        localStorage.setItem('pickleball_state', JSON.stringify({
-            sessionActive: state.sessionActive,
-            mode: state.mode,
-            numCourts: state.numCourts,
-            players: state.players,
-            courts: state.courts
-        }));
-    }
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const stateRef = ref(db, 'pickleball_state');
 
-    // LOAD DATA FROM BROWSER
-    function loadData() {
-        const saved = localStorage.getItem('pickleball_state');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            state.sessionActive = parsed.sessionActive;
-            state.mode = parsed.mode;
-            state.numCourts = parsed.numCourts;
-            state.players = parsed.players;
-            state.courts = parsed.courts;
+let state = {
+    isAdmin: false,
+    sessionActive: false,
+    mode: '4on',
+    numCourts: 1,
+    players: [],
+    courts: [] 
+};
 
-            // Sync the Admin UI elements with the loaded state
-            document.getElementById('playMode').value = state.mode;
-            document.getElementById('courtCountDisplay').innerText = state.numCourts;
-            
-            if (state.sessionActive) {
-                document.getElementById('startBtn').classList.add('hidden');
-                updateRulesUI();
-            }
+let selectedPlayer = null;
+
+// SYNC: Push data to Firebase whenever something changes
+function saveData() {
+    set(stateRef, {
+        sessionActive: state.sessionActive,
+        mode: state.mode,
+        numCourts: state.numCourts,
+        players: state.players,
+        courts: state.courts
+    });
+}
+
+// SYNC: Listen for changes from Firebase (Updates other users instantly)
+onValue(stateRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        state.sessionActive = data.sessionActive;
+        state.mode = data.mode;
+        state.numCourts = data.numCourts;
+        state.players = data.players || [];
+        state.courts = data.courts || [];
+        
+        // Update UI elements that aren't handled by render()
+        const playModeEl = document.getElementById('playMode');
+        const countDisplay = document.getElementById('courtCountDisplay');
+        const startBtn = document.getElementById('startBtn');
+
+        if(playModeEl) playModeEl.value = state.mode;
+        if(countDisplay) countDisplay.innerText = state.numCourts;
+        
+        if (state.sessionActive) {
+            startBtn.classList.add('hidden');
+        } else {
+            startBtn.classList.remove('hidden');
         }
-    }
-
-    function checkAdmin() {
-        if (document.getElementById('adminPass').value === 'admin123') {
-            state.isAdmin = true;
-            document.body.className = 'is-admin';
-            document.getElementById('status-bar').innerText = "Mode: Administrator";
-            render();
-        } else { alert("Wrong Password"); }
-    }
-
-    function logout() {
-        state.isAdmin = false;
-        document.body.className = 'user-mode';
-        document.getElementById('status-bar').innerText = "User Access";
-        render();
-    }
-
-    function startSession() {
-        state.sessionActive = true;
-        document.getElementById('startBtn').classList.add('hidden');
-        updateMode();
-        fillCourts();
-        render();
-    }
-
-    function endSession() {
-        if(!confirm("End session and clear all?")) return;
-        state.sessionActive = false;
-        state.players = [];
-        state.courts = [];
-        document.getElementById('startBtn').classList.remove('hidden');
-        saveData();
-        render();
-    }
-
-    function updateMode() {
-        state.mode = document.getElementById('playMode').value;
+        
         updateRulesUI();
-        render();
+        render(false); // Render without triggering a save loop
     }
+});
 
-    function updateRulesUI() {
-        const rules = document.getElementById('rulesText');
-        const modeLabel = document.getElementById('modeNameDisplay');
-        if (state.mode === '4on') {
-            modeLabel.innerText = "4 on / 4 off";
-            rules.innerText = "All players rotate out after the match.";
-        } else {
-            modeLabel.innerText = "2 on / 2 off";
-            rules.innerHTML = "• Winners stay & split<br>• Max 2 consecutive games";
-        }
-    }
+// Modified render to prevent infinite loops
+function render(shouldSave = true) {
+    if (shouldSave) saveData();
 
-    function changeCourts(val) {
-        state.numCourts = Math.max(1, state.numCourts + val);
-        document.getElementById('courtCountDisplay').innerText = state.numCourts;
-        if(state.sessionActive) fillCourts();
-        render();
-    }
+    let onCourt = 0;
+    state.courts.forEach(c => onCourt += (c.teamA.length + c.teamB.length));
+    document.getElementById('totalCount').innerText = onCourt + state.players.length;
+    document.getElementById('queueCount').innerText = state.players.length;
 
-    function joinQueue() {
-        const input = document.getElementById('playerName');
-        if (!input.value.trim()) return;
-        state.players.push({ id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 });
-        input.value = '';
-        if(state.sessionActive) fillCourts();
-        render();
-    }
-
-    function fillCourts() {
-        if (!state.sessionActive) return;
-        while (state.courts.length < state.numCourts) {
-            state.courts.push({ name: `Court ${state.courts.length + 1}`, teamA: [], teamB: [] });
-        }
-        while (state.courts.length > state.numCourts) {
-            const c = state.courts.pop();
-            state.players.unshift(...c.teamA, ...c.teamB);
-        }
-        state.courts.forEach(c => {
-            while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
-                if (c.teamA.length < 2) c.teamA.push(state.players.shift());
-                else c.teamB.push(state.players.shift());
+    const qList = document.getElementById('queueList');
+    qList.innerHTML = '';
+    state.players.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'queue-item';
+        div.draggable = true;
+        div.innerHTML = `<span>${i + 1}. <b>${p.name}</b></span>
+            <button class="btn btn-danger btn-sm" onclick="state.players.splice(${i}, 1); render();">×</button>`;
+        div.ondragstart = () => { draggedIdx = i; div.classList.add('dragging'); };
+        div.ondragover = (e) => {
+            e.preventDefault();
+            if (draggedIdx !== null && draggedIdx < i) {
+                const item = state.players.splice(draggedIdx, 1)[0];
+                state.players.splice(i, 0, item);
+                draggedIdx = i; render();
             }
-        });
+        };
+        qList.appendChild(div);
+    });
+
+    const container = document.getElementById('courtsContainer');
+    container.innerHTML = '';
+    if(!state.sessionActive) {
+        container.innerHTML = "<h3 style='text-align:center; padding: 50px; color:#666;'>No active session. Admin please log in to start.</h3>";
+        return;
     }
 
-    function handlePlayerClick(cIdx, pId, team) {
-        if (!selectedPlayer) {
-            selectedPlayer = { cIdx, pId, team };
-            render();
-        } else {
-            const court = state.courts[cIdx];
-            if (selectedPlayer.cIdx !== cIdx) {
-                selectedPlayer = { cIdx, pId, team }; 
-                render();
-                return;
-            }
-            if (selectedPlayer.pId === pId) {
-                selectedPlayer = null;
-                render();
-                return;
-            }
+    state.courts.forEach((c, i) => {
+        const isFull = (c.teamA.length + c.teamB.length) === 4;
+        const courtDiv = document.createElement('div');
+        courtDiv.className = 'court';
+        
+        const renderTeam = (teamArr, teamChar) => teamArr.map(p => `
+            <div class="player-slot ${selectedPlayer && selectedPlayer.pId === p.id ? 'selected-for-swap' : ''}" 
+                 onclick="handlePlayerClick(${i}, ${p.id}, '${teamChar}')" style="cursor:pointer;">
+                <b>${p.name}</b>
+                <span class="tag-sit" onclick="event.stopPropagation(); sitOut(${i}, ${p.id}, '${teamChar}')">Sit Out</span>
+                <small style="font-size:0.65rem; opacity:0.8; font-style:italic;">(Click to swap)</small>
+            </div>`).join('');
 
-            const teamSrc = selectedPlayer.team === 'A' ? court.teamA : court.teamB;
-            const teamDest = team === 'A' ? court.teamA : court.teamB;
-            
-            const srcIdx = teamSrc.findIndex(x => x.id === selectedPlayer.pId);
-            const destIdx = teamDest.findIndex(x => x.id === pId);
-
-            const temp = teamSrc[srcIdx];
-            teamSrc[srcIdx] = teamDest[destIdx];
-            teamDest[destIdx] = temp;
-
-            selectedPlayer = null;
-            render();
-        }
-    }
-
-    function finishMatch(idx, winTeam) {
-        const c = state.courts[idx];
-        const winners = winTeam === 'A' ? c.teamA : c.teamB;
-        const losers = winTeam === 'A' ? c.teamB : c.teamA;
-        losers.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
-        if (state.mode === '4on') {
-            winners.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
-            c.teamA = []; c.teamB = [];
-        } else {
-            winners.forEach(p => p.gamesInRow++);
-            const stayers = winners.filter(p => p.gamesInRow < 2);
-            winners.filter(p => p.gamesInRow >= 2).forEach(p => { p.gamesInRow = 0; state.players.push(p); });
-            c.teamA = stayers.slice(0, 1);
-            c.teamB = stayers.slice(1, 2);
-        }
-        fillCourts();
-        render();
-    }
-
-    function sitOut(cIdx, pId, fromTeam) {
-        const court = state.courts[cIdx];
-        let p;
-        if(fromTeam === 'A') {
-            const idx = court.teamA.findIndex(x => x.id === pId);
-            p = court.teamA.splice(idx, 1)[0];
-        } else {
-            const idx = court.teamB.findIndex(x => x.id === pId);
-            p = court.teamB.splice(idx, 1)[0];
-        }
-        p.gamesInRow = 0;
-        state.players.push(p);
-        fillCourts();
-        render();
-    }
-
-    let draggedIdx = null;
-
-    function render() {
-        saveData(); // Save every time a visual update happens
-
-        let onCourt = 0;
-        state.courts.forEach(c => onCourt += (c.teamA.length + c.teamB.length));
-        document.getElementById('totalCount').innerText = onCourt + state.players.length;
-        document.getElementById('queueCount').innerText = state.players.length;
-
-        const qList = document.getElementById('queueList');
-        qList.innerHTML = '';
-        state.players.forEach((p, i) => {
-            const div = document.createElement('div');
-            div.className = 'queue-item';
-            div.draggable = true;
-            div.innerHTML = `<span>${i + 1}. <b>${p.name}</b></span>
-                <button class="btn btn-danger btn-sm" onclick="state.players.splice(${i}, 1); render();">×</button>`;
-            div.ondragstart = () => { draggedIdx = i; div.classList.add('dragging'); };
-            div.ondragover = (e) => {
-                e.preventDefault();
-                if (draggedIdx !== null && draggedIdx < i) {
-                    const item = state.players.splice(draggedIdx, 1)[0];
-                    state.players.splice(i, 0, item);
-                    draggedIdx = i; render();
-                }
-            };
-            qList.appendChild(div);
-        });
-
-        const container = document.getElementById('courtsContainer');
-        container.innerHTML = '';
-        if(!state.sessionActive) {
-            container.innerHTML = "<h3 style='text-align:center; padding: 50px; color:#666;'>No active session. Admin please log in to start.</h3>";
-            return;
-        }
-
-        state.courts.forEach((c, i) => {
-            const isFull = (c.teamA.length + c.teamB.length) === 4;
-            const courtDiv = document.createElement('div');
-            courtDiv.className = 'court';
-            
-            const renderTeam = (teamArr, teamChar) => teamArr.map(p => `
-                <div class="player-slot ${selectedPlayer && selectedPlayer.pId === p.id ? 'selected-for-swap' : ''}" 
-                     onclick="handlePlayerClick(${i}, ${p.id}, '${teamChar}')" style="cursor:pointer;">
-                    <b>${p.name}</b>
-                    <span class="tag-sit" onclick="event.stopPropagation(); sitOut(${i}, ${p.id}, '${teamChar}')">Sit Out</span>
-                    <small style="font-size:0.65rem; opacity:0.8; font-style:italic;">(Click to swap)</small>
-                </div>`).join('');
-
-            courtDiv.innerHTML = `
-                <div class="court-header">
-                    <input type="text" class="court-name-input" value="${c.name}" ${state.isAdmin ? "" : "readonly"} onchange="state.courts[${i}].name=this.value; saveData();">
+        courtDiv.innerHTML = `
+            <div class="court-header">
+                <input type="text" class="court-name-input" value="${c.name}" ${state.isAdmin ? "" : "readonly"} onchange="state.courts[${i}].name=this.value; render();">
+            </div>
+            <div class="match-area">
+                <div class="team-box">
+                    <small style="color:var(--primary); font-weight:900">TEAM 1</small><hr>
+                    ${renderTeam(c.teamA, 'A')}
                 </div>
-                <div class="match-area">
-                    <div class="team-box">
-                        <small style="color:var(--primary); font-weight:900">TEAM 1</small><hr>
-                        ${renderTeam(c.teamA, 'A')}
-                    </div>
-                    <div class="vs-circle">VS</div>
-                    <div class="team-box">
-                        <small style="color:var(--primary); font-weight:900">TEAM 2</small><hr>
-                        ${renderTeam(c.teamB, 'B')}
-                    </div>
+                <div class="vs-circle">VS</div>
+                <div class="team-box">
+                    <small style="color:var(--primary); font-weight:900">TEAM 2</small><hr>
+                    ${renderTeam(c.teamB, 'B')}
                 </div>
-                <div style="margin-top:20px; display:flex; gap:10px;">
-                    <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'A')" ${!isFull ? 'disabled' : ''}>T1 Wins</button>
-                    <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'B')" ${!isFull ? 'disabled' : ''}>T2 Wins</button>
-                </div>`;
-            container.appendChild(courtDiv);
-        });
-    }
+            </div>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'A')" ${!isFull ? 'disabled' : ''}>T1 Wins</button>
+                <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'B')" ${!isFull ? 'disabled' : ''}>T2 Wins</button>
+            </div>`;
+        container.appendChild(courtDiv);
+    });
+}
 
-    // INITIALIZE
-    loadData();
-    render();
+// ... Keep all other functions (handlePlayerClick, joinQueue, etc.) exactly as they were ...
 </script>
 </body>
 </html>
