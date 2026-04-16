@@ -233,7 +233,7 @@
     stateRef.on('value', (snapshot) => {
         const cloudData = snapshot.val();
         if (cloudData) {
-            // Check if a new match notification is needed
+            // Only trigger if this is an update we haven't processed yet
             if (cloudData.lastUpdate && cloudData.lastUpdate.timestamp > state.lastUpdate.timestamp) {
                 const idx = cloudData.lastUpdate.courtIdx;
                 if (idx !== -1 && cloudData.courts && cloudData.courts[idx]) {
@@ -265,7 +265,7 @@
         state.sessionActive = true;
         state.mode = document.getElementById('playMode').value;
         state.lastUpdate = { timestamp: Date.now(), courtIdx: -1 };
-        fillCourts();
+        fillCourts(true); // true means show popup
         render(true);
     }
 
@@ -283,11 +283,11 @@
     function changeCourts(val) {
         if(!state.isAdmin) return;
         state.numCourts = Math.max(1, state.numCourts + val);
-        if(state.sessionActive) fillCourts();
+        if(state.sessionActive) fillCourts(true);
         render(true);
     }
 
-    function fillCourts() {
+    function fillCourts(triggerAlerts = false) {
         if (!state.sessionActive) return;
         while (state.courts.length < state.numCourts) {
             state.courts.push({ name: `Court ${state.courts.length + 1}`, teamA: [], teamB: [] });
@@ -303,9 +303,10 @@
                 if (c.teamA.length < 2) c.teamA.push(state.players.shift());
                 else c.teamB.push(state.players.shift());
             }
-            if(filled) {
-                // Important: Mark this court as the one that was just updated
+            if(filled && triggerAlerts) {
                 state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
+                triggerCourtBlink(idx);
+                showMatchPopup(c.name, c.teamA, c.teamB);
             }
         });
     }
@@ -324,7 +325,6 @@
                     const temp = srcTeam[srcIdx];
                     srcTeam[srcIdx] = destTeam[destIdx];
                     destTeam[destIdx] = temp;
-                    state.lastUpdate = { timestamp: Date.now(), courtIdx: cIdx };
                 }
             }
             selectedSwap = null;
@@ -340,8 +340,7 @@
             const p = teamArr.splice(pIdx, 1)[0];
             p.gamesInRow = 0;
             state.players.push(p);
-            fillCourts();
-            state.lastUpdate = { timestamp: Date.now(), courtIdx: cIdx };
+            fillCourts(true);
             render(true);
         }
     }
@@ -363,9 +362,7 @@
             c.teamB = stayers.slice(1, 2);
         }
         
-        fillCourts();
-        // Update timestamp so other users see the new players blinking
-        state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
+        fillCourts(true); // Pass true to trigger the popup on THIS session
         render(true);
     }
 
@@ -374,6 +371,7 @@
         const el = document.getElementById('matchNotification');
         document.getElementById('matchNames').innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
         el.style.display = 'block';
+        // Increased clear time slightly to ensure user sees it
         setTimeout(() => { el.style.display = 'none'; }, 6000);
     }
 
