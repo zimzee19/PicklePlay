@@ -216,21 +216,22 @@
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
-const firebaseConfig = {
-    apiKey: "AIzaSyDcXbm3UCGro4A3NPEEAHfp6ngNQ8ZtMUQ",
-    authDomain: "pickleplay-59ba8.firebaseapp.com",
-    databaseURL: "https://pickleplay-59ba8-default-rtdb.firebaseio.com",
-    projectId: "pickleplay-59ba8",
-    storageBucket: "pickleplay-59ba8.firebasestorage.app",
-    messagingSenderId: "167188727754",
-    appId: "1:167188727754:web:783381a771775130e17133"
-  };
+    // --- 1. CONFIGURATION (REPLACE WITH YOUR KEYS) ---
+    const firebaseConfig = {
+        apiKey: "PASTE_HERE",
+        authDomain: "PASTE_HERE",
+        databaseURL: "PASTE_HERE",
+        projectId: "PASTE_HERE",
+        storageBucket: "PASTE_HERE",
+        messagingSenderId: "PASTE_HERE",
+        appId: "PASTE_HERE"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const stateRef = db.ref('pickleball_state');
 
+    // --- 2. GLOBAL STATE ---
     let state = {
         isAdmin: false,
         sessionActive: false,
@@ -244,6 +245,7 @@ const firebaseConfig = {
     let selectedSwap = null; 
     let blinkingCourts = new Set();
 
+    // --- 3. SYNC LOGIC ---
     function pushToCloud() {
         stateRef.set({
             sessionActive: state.sessionActive,
@@ -260,7 +262,7 @@ const firebaseConfig = {
         if (cloudData) {
             if (cloudData.lastUpdate && cloudData.lastUpdate.timestamp > state.lastUpdate.timestamp) {
                 const idx = cloudData.lastUpdate.courtIdx;
-                if (idx !== -1 && cloudData.courts[idx]) {
+                if (idx !== -1 && cloudData.courts && cloudData.courts[idx]) {
                     triggerCourtBlink(idx);
                     showMatchPopup(cloudData.courts[idx].name, cloudData.courts[idx].teamA, cloudData.courts[idx].teamB);
                 }
@@ -275,6 +277,7 @@ const firebaseConfig = {
         }
     });
 
+    // --- 4. CORE APP FUNCTIONS ---
     function showMatchPopup(courtName, teamA, teamB) {
         const names = [...teamA, ...teamB].map(p => p.name).join(' & ');
         const el = document.getElementById('matchNotification');
@@ -289,22 +292,40 @@ const firebaseConfig = {
         setTimeout(() => { blinkingCourts.delete(idx); render(false); }, 5000);
     }
 
-   function checkAdmin() {
-    const input = document.getElementById('adminPass').value;
-    
-    // Fetch the correct password from your secure DB node
-    db.ref('admin_settings/password').once('value').then((snapshot) => {
-        if (input === snapshot.val()) {
-            state.isAdmin = true;
-            document.body.className = 'is-admin';
-            render(false);
-        } else {
-            alert("Incorrect Password");
-        }
-    });
-}
+    /**
+     * SECURE ADMIN CHECK
+     * Fetches password from Firebase 'admin_settings/password' node
+     */
+    function checkAdmin() {
+        const userInput = document.getElementById('adminPass').value;
+        const statusMsg = document.getElementById('status-bar');
+        
+        statusMsg.innerText = "Verifying Credentials...";
 
-    function logout() { state.isAdmin = false; document.body.className = 'user-mode'; render(false); }
+        db.ref('admin_settings/password').once('value').then((snapshot) => {
+            const securePass = snapshot.val();
+            
+            if (userInput === securePass && securePass !== null) {
+                state.isAdmin = true;
+                document.body.className = 'is-admin';
+                document.getElementById('adminPass').value = '';
+                statusMsg.innerText = "Mode: Administrator";
+                render(false);
+            } else {
+                statusMsg.innerText = "Access Denied";
+                alert("Incorrect Password. Make sure 'admin_settings/password' is set in your Firebase Database.");
+            }
+        }).catch((err) => {
+            console.error(err);
+            alert("Database Error: Check your Firebase Rules.");
+        });
+    }
+
+    function logout() { 
+        state.isAdmin = false; 
+        document.body.className = 'user-mode'; 
+        render(false); 
+    }
 
     function startSession() {
         state.sessionActive = true;
@@ -367,7 +388,6 @@ const firebaseConfig = {
         if (!selectedSwap) {
             selectedSwap = { cIdx, pId, team };
         } else {
-            // Only swap if on the same court
             if (selectedSwap.cIdx === cIdx) {
                 if (selectedSwap.pId !== pId) {
                     const court = state.courts[cIdx];
@@ -418,10 +438,10 @@ const firebaseConfig = {
         render(true);
     }
 
+    // --- 5. RENDER ENGINE ---
     function render(push = true) {
         if (push) pushToCloud();
         
-        document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
         document.getElementById('courtCountDisplay').innerText = state.numCourts;
         document.getElementById('playMode').value = state.mode;
         document.getElementById('modeNameDisplay').innerText = state.mode === '4on' ? "4 on / 4 off" : "2 on / 2 off";
