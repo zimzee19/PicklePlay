@@ -387,6 +387,22 @@ const firebaseConfig = {
         }
     }
 
+    function removeFromQueue(index) {
+    // Remove from local state
+    state.players.splice(index, 1);
+
+    // Sync ONLY the players node to the cloud
+    db.ref('pickleball_state').update({
+        players: state.players
+    }).then(() => {
+        console.log("Player removed and synced.");
+    }).catch((err) => {
+        console.error("Sync failed: ", err.message);
+    });
+
+    render(false); // Update UI locally
+}
+
     function finishMatch(idx, winTeam) {
         if (!state.isAdmin) return;
         const c = state.courts[idx];
@@ -421,15 +437,19 @@ const firebaseConfig = {
         document.getElementById('queueCount').innerText = state.players.length;
 
         const qList = document.getElementById('queueList');
-        qList.innerHTML = '';
-        state.players.forEach((p, i) => {
-            const div = document.createElement('div');
-            div.className = 'card';
-            div.style = "display:flex; justify-content:space-between; padding:10px; margin-bottom:5px;";
-            div.innerHTML = `<span>${i + 1}. <b>${p.name}</b></span>
-                <button class="btn btn-danger admin-only" onclick="state.players.splice(${i}, 1); render(true);">X</button>`;
-            qList.appendChild(div);
-        });
+qList.innerHTML = '';
+state.players.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style = "display:flex; justify-content:space-between; align-items:center; padding:10px; margin-bottom:5px;";
+    
+    // REMOVED 'admin-only' class so everyone can see the 'X' button
+    div.innerHTML = `
+        <span>${i + 1}. <b>${p.name}</b></span>
+        <button class="btn btn-danger" onclick="removeFromQueue(${i})">X</button>
+    `;
+    qList.appendChild(div);
+});
 
         const container = document.getElementById('courtsContainer');
         container.innerHTML = '';
