@@ -104,9 +104,11 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-outline { background: transparent; border: 1px solid #ccc; color: #666; }
         
-        .admin-only { display: none; }
-        .is-admin .admin-only { display: block; }
-        .is-admin .user-only { display: none; }
+        /* Permission Classes */
+        .admin-only { display: none !important; }
+        .is-admin .admin-only { display: block !important; }
+        .is-admin .admin-only.flex { display: flex !important; }
+        .is-admin .user-only { display: none !important; }
         
         .login-input { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
     </style>
@@ -185,7 +187,7 @@ const firebaseConfig = {
     storageBucket: "pickleplay-59ba8.firebasestorage.app",
     messagingSenderId: "167188727754",
     appId: "1:167188727754:web:783381a771775130e17133"
-  };
+};
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -205,43 +207,31 @@ const firebaseConfig = {
     let selectedSwap = null; 
     let blinkingCourts = new Set();
 
-    // --- AUTH LISTENER (Stays logged in on refresh) ---
     auth.onAuthStateChanged((user) => {
-        if (user) {
-            state.isAdmin = true;
-            document.body.className = 'is-admin';
-        } else {
-            state.isAdmin = false;
-            document.body.className = 'user-mode';
-        }
+        state.isAdmin = !!user;
+        document.body.className = state.isAdmin ? 'is-admin' : 'user-mode';
         render(false);
     });
 
     function handleLogin() {
         const email = document.getElementById('adminEmail').value;
         const pass = document.getElementById('adminPass').value;
-        auth.signInWithEmailAndPassword(email, pass)
-            .catch(err => alert("Login Failed: " + err.message));
+        auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Login Failed: " + err.message));
     }
 
-    function handleLogout() {
-        auth.signOut();
-    }
+    function handleLogout() { auth.signOut(); }
 
-    // --- SYNC & RENDER (Same Logic as before, just safer) ---
     function pushToCloud() {
-    // Only admins should be calling the full sync
-    if (!state.isAdmin) return; 
-
-    db.ref('pickleball_state').update({
-        sessionActive: state.sessionActive,
-        mode: state.mode,
-        numCourts: state.numCourts,
-        players: state.players,
-        courts: state.courts,
-        lastUpdate: state.lastUpdate
-    });
-}
+        if (!state.isAdmin) return; 
+        stateRef.update({
+            sessionActive: state.sessionActive,
+            mode: state.mode,
+            numCourts: state.numCourts,
+            players: state.players,
+            courts: state.courts,
+            lastUpdate: state.lastUpdate
+        });
+    }
 
     stateRef.on('value', (snapshot) => {
         const cloudData = snapshot.val();
@@ -263,24 +253,19 @@ const firebaseConfig = {
         }
     });
 
-    // ... [Include your existing functions: joinQueue, fillCourts, handleSwapClick, sitOut, finishMatch, render] ...
-    // Note: ensure finishMatch and other data-modifying functions call render(true)
-
-    function showMatchPopup(courtName, teamA, teamB) {
-        const names = [...teamA, ...teamB].map(p => p.name).join(' & ');
-        const el = document.getElementById('matchNotification');
-        document.getElementById('matchNames').innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
-        el.style.display = 'block';
-        setTimeout(() => { el.style.display = 'none'; }, 6000);
-    }
-
-    function triggerCourtBlink(idx) {
-        blinkingCourts.add(idx);
+    function joinQueue() {
+        const input = document.getElementById('playerName');
+        if (!input.value.trim()) return;
+        const newPlayer = { id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 };
+        state.players.push(newPlayer);
+        input.value = '';
+        // Users can update the player list specifically
+        db.ref('pickleball_state/players').set(state.players);
         render(false);
-        setTimeout(() => { blinkingCourts.delete(idx); render(false); }, 5000);
     }
 
     function startSession() {
+        if(!state.isAdmin) return;
         state.sessionActive = true;
         state.mode = document.getElementById('playMode').value;
         fillCourts();
@@ -288,7 +273,7 @@ const firebaseConfig = {
     }
 
     function endSession() {
-        if(!confirm("Clear all data?")) return;
+        if(!state.isAdmin || !confirm("Clear all data?")) return;
         state.sessionActive = false;
         state.players = [];
         state.courts = [];
@@ -296,36 +281,18 @@ const firebaseConfig = {
         pushToCloud();
     }
 
-    function updateMode() { state.mode = document.getElementById('playMode').value; render(true); }
+    function updateMode() { 
+        if(!state.isAdmin) return;
+        state.mode = document.getElementById('playMode').value; 
+        render(true); 
+    }
 
     function changeCourts(val) {
+        if(!state.isAdmin) return;
         state.numCourts = Math.max(1, state.numCourts + val);
         if(state.sessionActive) fillCourts();
         render(true);
     }
-
-    function joinQueue() {
-    const input = document.getElementById('playerName');
-    if (!input.value.trim()) return;
-    
-    const newPlayer = { id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 };
-    
-    // Add locally
-    state.players.push(newPlayer);
-    input.value = '';
-
-    // If session is active, we need to update the queue in the cloud
-    // We use .update() instead of .set() to avoid overwriting admin-only areas
-    db.ref('pickleball_state').update({
-        players: state.players
-    }).then(() => {
-        console.log("Queue synced successfully");
-    }).catch((err) => {
-        console.error("Sync failed: ", err.message);
-    });
-
-    render(false); // Render locally immediately
-}
 
     function fillCourts() {
         if (!state.sessionActive) return;
@@ -345,46 +312,8 @@ const firebaseConfig = {
             }
             if(filled) {
                 state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
-                triggerCourtBlink(idx);
-                showMatchPopup(c.name, c.teamA, c.teamB);
             }
         });
-    }
-
-    function handleSwapClick(cIdx, pId, team) {
-        if (!state.isAdmin) return;
-        if (!selectedSwap) {
-            selectedSwap = { cIdx, pId, team };
-        } else {
-            if (selectedSwap.cIdx === cIdx) {
-                if (selectedSwap.pId !== pId) {
-                    const court = state.courts[cIdx];
-                    const srcTeam = selectedSwap.team === 'A' ? court.teamA : court.teamB;
-                    const destTeam = team === 'A' ? court.teamA : court.teamB;
-                    const srcIdx = srcTeam.findIndex(p => p.id === selectedSwap.pId);
-                    const destIdx = destTeam.findIndex(p => p.id === pId);
-                    const temp = srcTeam[srcIdx];
-                    srcTeam[srcIdx] = destTeam[destIdx];
-                    destTeam[destIdx] = temp;
-                }
-            }
-            selectedSwap = null;
-        }
-        render(true);
-    }
-
-    function sitOut(cIdx, pId, team) {
-        if (!state.isAdmin) return;
-        const court = state.courts[cIdx];
-        const teamArr = team === 'A' ? court.teamA : court.teamB;
-        const pIdx = teamArr.findIndex(p => p.id === pId);
-        if (pIdx > -1) {
-            const p = teamArr.splice(pIdx, 1)[0];
-            p.gamesInRow = 0;
-            state.players.push(p);
-            fillCourts();
-            render(true);
-        }
     }
 
     function finishMatch(idx, winTeam) {
@@ -405,6 +334,54 @@ const firebaseConfig = {
         }
         fillCourts();
         render(true);
+    }
+
+    function handleSwapClick(cIdx, pId, team) {
+        if (!state.isAdmin) return;
+        if (!selectedSwap) {
+            selectedSwap = { cIdx, pId, team };
+        } else {
+            if (selectedSwap.cIdx === cIdx) {
+                const court = state.courts[cIdx];
+                const srcTeam = selectedSwap.team === 'A' ? court.teamA : court.teamB;
+                const destTeam = team === 'A' ? court.teamA : court.teamB;
+                const srcIdx = srcTeam.findIndex(p => p.id === selectedSwap.pId);
+                const destIdx = destTeam.findIndex(p => p.id === pId);
+                const temp = srcTeam[srcIdx];
+                srcTeam[srcIdx] = destTeam[destIdx];
+                destTeam[destIdx] = temp;
+            }
+            selectedSwap = null;
+        }
+        render(true);
+    }
+
+    function sitOut(cIdx, pId, team) {
+        if (!state.isAdmin) return;
+        const court = state.courts[cIdx];
+        const teamArr = team === 'A' ? court.teamA : court.teamB;
+        const pIdx = teamArr.findIndex(p => p.id === pId);
+        if (pIdx > -1) {
+            const p = teamArr.splice(pIdx, 1)[0];
+            p.gamesInRow = 0;
+            state.players.push(p);
+            fillCourts();
+            render(true);
+        }
+    }
+
+    function triggerCourtBlink(idx) {
+        blinkingCourts.add(idx);
+        render(false);
+        setTimeout(() => { blinkingCourts.delete(idx); render(false); }, 5000);
+    }
+
+    function showMatchPopup(courtName, teamA, teamB) {
+        const names = [...teamA, ...teamB].map(p => p.name).join(' & ');
+        const el = document.getElementById('matchNotification');
+        document.getElementById('matchNames').innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 6000);
     }
 
     function render(push = true) {
@@ -447,7 +424,7 @@ const firebaseConfig = {
                 return `
                     <div class="player-slot">
                         <span class="player-name">${p.name}</span>
-                        <div class="action-btns admin-only">
+                        <div class="action-btns admin-only flex">
                             <button class="btn ${isSwapping ? 'btn-accent' : 'btn-outline'}" 
                                 onclick="handleSwapClick(${i}, ${p.id}, '${teamChar}')">Swap</button>
                             <button class="btn btn-danger" 
@@ -458,14 +435,14 @@ const firebaseConfig = {
 
             courtDiv.innerHTML = `
                 <div style="text-align:center; margin-bottom:15px;">
-                    <input type="text" style="font-weight:bold; border:none; text-align:center; font-size:1.1rem" value="${c.name}" onchange="state.courts[${i}].name=this.value; render(true);" ${state.isAdmin ? '' : 'readonly'}>
+                    <input type="text" style="font-weight:bold; border:none; text-align:center; font-size:1.1rem" value="${c.name}" onchange="if(state.isAdmin){state.courts[${i}].name=this.value; render(true);}" ${state.isAdmin ? '' : 'readonly'}>
                 </div>
                 <div class="match-area">
                     <div class="team-box"><small>T1</small><hr>${c.teamA.map(p => createPlayerHtml(p, 'A')).join('')}</div>
                     <div style="text-align:center; font-weight:bold; padding-top:80px;">VS</div>
                     <div class="team-box"><small>T2</small><hr>${c.teamB.map(p => createPlayerHtml(p, 'B')).join('')}</div>
                 </div>
-                <div class="admin-only" style="margin-top:20px; display:flex; gap:10px;">
+                <div class="admin-only flex" style="margin-top:20px; gap:10px;">
                     <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'A')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T1 Wins</button>
                     <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'B')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T2 Wins</button>
                 </div>`;
