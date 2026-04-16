@@ -289,13 +289,20 @@ const firebaseConfig = {
         setTimeout(() => { blinkingCourts.delete(idx); render(false); }, 5000);
     }
 
-    function checkAdmin() {
-        if (document.getElementById('adminPass').value === 'admin123') {
+   function checkAdmin() {
+    const input = document.getElementById('adminPass').value;
+    
+    // Fetch the correct password from your secure DB node
+    db.ref('admin_settings/password').once('value').then((snapshot) => {
+        if (input === snapshot.val()) {
             state.isAdmin = true;
             document.body.className = 'is-admin';
             render(false);
-        } else alert("Incorrect PW");
-    }
+        } else {
+            alert("Incorrect Password");
+        }
+    });
+}
 
     function logout() { state.isAdmin = false; document.body.className = 'user-mode'; render(false); }
 
