@@ -3,83 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pickleball Open Play Sync</title>
+    <title>Pickleball Pro Open Play (Secure Mode)</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     
     <style>
-        :root { --primary: #2e7d32; --accent: #c6ff00; --dark: #1b5e20; --danger: #d32f2f; }
-        body { font-family: system-ui, sans-serif; background: #f0f2f0; margin: 0; padding-bottom: 50px; }
-        header { background: var(--primary); color: white; padding: 1rem; text-align: center; }
-        .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; max-width: 1400px; margin: 20px auto; padding: 0 20px; }
-        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
-        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .courts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; }
-        .court { border: 4px solid var(--primary); border-radius: 15px; padding: 20px; background: white; }
-        .blink-update { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { background: white; } 50% { background: #fffde7; } 100% { background: white; } }
-        .match-area { display: grid; grid-template-columns: 1fr 30px 1fr; gap: 10px; align-items: start; }
-        .team-box { padding: 10px; background: #f9f9f9; border-radius: 8px; min-height: 150px; border: 1px solid #ddd; }
-        .player-slot { background: white; padding: 8px; margin-bottom: 8px; border-radius: 5px; border: 1px solid #eee; }
-        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        :root {
+            --primary: #2e7d32;
+            --accent: #c6ff00;
+            --dark: #1b5e20;
+            --light: #f1f8e9;
+            --danger: #d32f2f;
+            --card-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: #f0f2f0;
+            margin: 0;
+            color: #333;
+            padding-bottom: 50px;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 25px;
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .rules-box {
+            background: #fff9c4;
+            padding: 20px;
+            border: 2px solid #fbc02d;
+            margin-bottom: 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .courts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .court {
+            border: 4px solid var(--primary);
+            border-radius: 15px;
+            padding: 20px;
+            background: white;
+            transition: background-color 0.5s ease;
+        }
+
+        .blink-update { animation: yellowPulse 1.5s infinite; }
+        @keyframes yellowPulse {
+            0% { background-color: white; }
+            50% { background-color: #fffde7; border-color: #fbc02d; }
+            100% { background-color: white; }
+        }
+
+        #matchNotification {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; background: var(--dark); color: white;
+            padding: 20px 40px; border-radius: 50px; border: 3px solid var(--accent);
+            text-align: center; display: none; min-width: 300px;
+        }
+
+        .match-area { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 10px; align-items: start; }
+        .team-box { padding: 10px; background: #fdfdfd; border: 2px solid #f0f0f0; border-radius: 10px; min-height: 180px; }
+        .player-slot { margin-bottom: 12px; padding: 10px; border-radius: 8px; background: white; border: 1px solid #eee; }
+        .player-name { display: block; font-weight: bold; margin-bottom: 8px; font-size: 1rem; }
+        .action-btns { display: flex; gap: 5px; justify-content: center; }
+
+        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
         .btn-primary { background: var(--primary); color: white; }
+        .btn-accent { background: var(--accent); color: var(--dark); }
         .btn-danger { background: var(--danger); color: white; }
-        .btn-outline { background: transparent; border: 1px solid #ccc; font-size: 0.7rem; }
-        .admin-only { display: none !important; }
-        .is-admin .admin-only { display: block !important; }
-        .is-admin .user-only { display: none !important; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
-        .queue-item { display: flex; align-items: center; justify-content: space-between; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #ddd; }
+        .btn-outline { background: transparent; border: 1px solid #ccc; color: #666; }
+        
+        .admin-only { display: none; }
+        .is-admin .admin-only { display: block; }
+        .is-admin .user-only { display: none; }
+        
+        .login-input { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
     </style>
 </head>
 <body class="user-mode">
 
+<div id="matchNotification">
+    <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--accent);">Next Match Up</div>
+    <div id="matchNames" style="font-size: 1.2rem; font-weight: bold; margin-top: 5px;"></div>
+</div>
+
 <header>
-    <h1>Pickleball Live</h1>
-    <div id="status-bar">Connecting...</div>
+    <h1>Pickleball Open Play</h1>
+    <div id="status-bar">Syncing...</div>
 </header>
 
 <div class="main-layout">
     <aside>
-        <section class="card user-only">
-            <input type="email" id="adminEmail" placeholder="Admin Email">
-            <input type="password" id="adminPass" placeholder="Password">
-            <button class="btn btn-primary" style="width:100%" onclick="handleLogin()">Admin Login</button>
+        <section id="loginSection" class="card user-only">
+            <h3>Admin Login</h3>
+            <input type="email" id="adminEmail" class="login-input" placeholder="Admin Email">
+            <input type="password" id="adminPass" class="login-input" placeholder="Password">
+            <button class="btn btn-primary" style="width:100%" onclick="handleLogin()">Login</button>
         </section>
 
-        <section class="card admin-only">
+        <section id="adminDashboard" class="card admin-only">
             <h3>Admin Controls</h3>
-            <button class="btn btn-primary" onclick="startSession()">Start Session</button>
+            <button class="btn btn-accent" onclick="startSession()">Start Session</button>
             <button class="btn btn-danger" onclick="endSession()">End Session</button>
             <hr>
-            <label>Courts:</label>
-            <button class="btn btn-outline" onclick="changeCourts(-1)">-</button>
-            <span id="courtDisplay">1</span>
-            <button class="btn btn-outline" onclick="changeCourts(1)">+</button>
-            <select id="playMode" onchange="updateMode()" style="margin-top:10px; width:100%">
-                <option value="4on">4 on / 4 off</option>
-                <option value="2on">2 on / 2 off</option>
-            </select>
-            <button class="btn btn-outline" onclick="auth.signOut()" style="margin-top:10px; width:100%">Logout</button>
+            <div>
+                <label>Mode: </label>
+                <select id="playMode" onchange="updateMode()">
+                    <option value="4on">4 on / 4 off</option>
+                    <option value="2on">2 on / 2 off</option>
+                </select>
+            </div>
+            <div style="margin-top:10px">
+                <label>Courts: </label>
+                <button class="btn btn-outline" onclick="changeCourts(-1)">-</button>
+                <span id="courtCountDisplay" style="margin: 0 10px; font-weight:bold;">1</span>
+                <button class="btn btn-outline" onclick="changeCourts(1)">+</button>
+            </div>
+            <button class="btn btn-outline" onclick="handleLogout()" style="margin-top:15px; width:100%">Sign Out</button>
         </section>
 
         <section class="card">
-            <input type="text" id="playerName" placeholder="Add Player Name..." onkeypress="if(event.key === 'Enter') joinQueue()">
-            <button class="btn btn-primary" style="width:100%" onclick="joinQueue()">Join Queue</button>
+            <input type="text" id="playerName" placeholder="Add Player..." class="login-input" onkeypress="if(event.key === 'Enter') joinQueue()">
+            <button class="btn btn-primary" style="width:100%" onclick="joinQueue()">Add to Queue</button>
         </section>
+
+        <div class="card" style="padding: 10px; font-size: 0.9rem; font-weight: bold; display: flex; justify-content: space-around;">
+            <span>Total: <span id="totalCount">0</span></span>
+            <span>Queue: <span id="queueCount">0</span></span>
+        </div>
 
         <h3>Waiting Queue</h3>
         <div id="queueList"></div>
     </aside>
 
     <main>
+        <div id="rulesDisplay" class="rules-box">
+            <span id="modeNameDisplay" style="font-weight: 800; color: #af8600; font-size: 1.2rem;">4 on / 4 off</span>
+            <div id="rulesText">Updating rules...</div>
+        </div>
         <div id="courtsContainer" class="courts-grid"></div>
     </main>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG (USE YOUR KEYS) ---
 const firebaseConfig = {
     apiKey: "AIzaSyDcXbm3UCGro4A3NPEEAHfp6ngNQ8ZtMUQ",
     authDomain: "pickleplay-59ba8.firebaseapp.com",
@@ -95,99 +192,191 @@ const firebaseConfig = {
     const auth = firebase.auth();
     const stateRef = db.ref('pickleball_state');
 
-    let state = { isAdmin: false, sessionActive: false, mode: '4on', numCourts: 1, players: [], courts: [], lastUpdate: { timestamp: 0, courtIdx: -1 } };
-    let selectedSwap = null;
+    let state = {
+        isAdmin: false,
+        sessionActive: false,
+        mode: '4on',
+        numCourts: 1,
+        players: [],
+        courts: [],
+        lastUpdate: { timestamp: 0, courtIdx: -1 }
+    };
+    
+    let selectedSwap = null; 
+    let blinkingCourts = new Set();
 
-    // --- AUTH & SYNC ---
-    auth.onAuthStateChanged(user => {
-        state.isAdmin = !!user;
-        document.body.className = user ? 'is-admin' : 'user-mode';
-        render();
+    // --- AUTH LISTENER (Stays logged in on refresh) ---
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            state.isAdmin = true;
+            document.body.className = 'is-admin';
+        } else {
+            state.isAdmin = false;
+            document.body.className = 'user-mode';
+        }
+        render(false);
     });
 
     function handleLogin() {
-        auth.signInWithEmailAndPassword(document.getElementById('adminEmail').value, document.getElementById('adminPass').value)
-            .catch(err => alert(err.message));
+        const email = document.getElementById('adminEmail').value;
+        const pass = document.getElementById('adminPass').value;
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch(err => alert("Login Failed: " + err.message));
     }
 
-    // This function handles "Differential Sync"
-    function sync(full = false) {
-        const updateData = {
+    function handleLogout() {
+        auth.signOut();
+    }
+
+    // --- SYNC & RENDER (Same Logic as before, just safer) ---
+    function pushToCloud() {
+        if (!state.isAdmin) return; // Non-admins can't push
+        stateRef.set({
+            sessionActive: state.sessionActive,
+            mode: state.mode,
+            numCourts: state.numCourts,
             players: state.players,
             courts: state.courts,
             lastUpdate: state.lastUpdate
-        };
-        // Only include these if we are admin and doing a full session change
-        if (state.isAdmin && full) {
-            updateData.sessionActive = state.sessionActive;
-            updateData.mode = state.mode;
-            updateData.numCourts = state.numCourts;
-        }
-        stateRef.update(updateData).catch(err => console.warn("Sync restricted:", err.message));
+        });
     }
 
-    stateRef.on('value', snap => {
-        const data = snap.val();
-        if (data) {
-            state = { ...state, ...data };
-            render();
+    stateRef.on('value', (snapshot) => {
+        const cloudData = snapshot.val();
+        if (cloudData) {
+            if (cloudData.lastUpdate && cloudData.lastUpdate.timestamp > state.lastUpdate.timestamp) {
+                const idx = cloudData.lastUpdate.courtIdx;
+                if (idx !== -1 && cloudData.courts && cloudData.courts[idx]) {
+                    triggerCourtBlink(idx);
+                    showMatchPopup(cloudData.courts[idx].name, cloudData.courts[idx].teamA, cloudData.courts[idx].teamB);
+                }
+            }
+            state.sessionActive = cloudData.sessionActive;
+            state.mode = cloudData.mode;
+            state.numCourts = cloudData.numCourts;
+            state.players = cloudData.players || [];
+            state.courts = cloudData.courts || [];
+            state.lastUpdate = cloudData.lastUpdate || { timestamp: 0, courtIdx: -1 };
+            render(false);
         }
     });
 
-    // --- GAME LOGIC ---
+    // ... [Include your existing functions: joinQueue, fillCourts, handleSwapClick, sitOut, finishMatch, render] ...
+    // Note: ensure finishMatch and other data-modifying functions call render(true)
+
+    function showMatchPopup(courtName, teamA, teamB) {
+        const names = [...teamA, ...teamB].map(p => p.name).join(' & ');
+        const el = document.getElementById('matchNotification');
+        document.getElementById('matchNames').innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 6000);
+    }
+
+    function triggerCourtBlink(idx) {
+        blinkingCourts.add(idx);
+        render(false);
+        setTimeout(() => { blinkingCourts.delete(idx); render(false); }, 5000);
+    }
+
+    function startSession() {
+        state.sessionActive = true;
+        state.mode = document.getElementById('playMode').value;
+        fillCourts();
+        render(true);
+    }
+
+    function endSession() {
+        if(!confirm("Clear all data?")) return;
+        state.sessionActive = false;
+        state.players = [];
+        state.courts = [];
+        state.lastUpdate = { timestamp: Date.now(), courtIdx: -1 };
+        pushToCloud();
+    }
+
+    function updateMode() { state.mode = document.getElementById('playMode').value; render(true); }
+
+    function changeCourts(val) {
+        state.numCourts = Math.max(1, state.numCourts + val);
+        if(state.sessionActive) fillCourts();
+        render(true);
+    }
+
     function joinQueue() {
-        const name = document.getElementById('playerName').value.trim();
-        if (!name) return;
-        state.players.push({ id: Date.now(), name, gamesInRow: 0 });
-        document.getElementById('playerName').value = '';
-        if (state.isAdmin) fillCourts();
-        sync();
+        const input = document.getElementById('playerName');
+        if (!input.value.trim()) return;
+        state.players.push({ id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 });
+        input.value = '';
+        if(state.sessionActive) fillCourts();
+        render(true);
     }
 
-    function moveInQueue(index, direction) {
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= state.players.length) return;
-        const temp = state.players[index];
-        state.players[index] = state.players[newIndex];
-        state.players[newIndex] = temp;
-        sync();
-    }
-
-    function sitOut(cIdx, pId, team) {
-        const teamArr = team === 'A' ? state.courts[cIdx].teamA : state.courts[cIdx].teamB;
-        const pIdx = teamArr.findIndex(p => p.id === pId);
-        const p = teamArr.splice(pIdx, 1)[0];
-        p.gamesInRow = 0;
-        state.players.push(p);
-        if (state.isAdmin) fillCourts();
-        sync();
+    function fillCourts() {
+        if (!state.sessionActive) return;
+        while (state.courts.length < state.numCourts) {
+            state.courts.push({ name: `Court ${state.courts.length + 1}`, teamA: [], teamB: [] });
+        }
+        while (state.courts.length > state.numCourts) {
+            const c = state.courts.pop();
+            state.players.unshift(...c.teamA, ...c.teamB);
+        }
+        state.courts.forEach((c, idx) => {
+            let filled = false;
+            while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
+                filled = true;
+                if (c.teamA.length < 2) c.teamA.push(state.players.shift());
+                else c.teamB.push(state.players.shift());
+            }
+            if(filled) {
+                state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
+                triggerCourtBlink(idx);
+                showMatchPopup(c.name, c.teamA, c.teamB);
+            }
+        });
     }
 
     function handleSwapClick(cIdx, pId, team) {
+        if (!state.isAdmin) return;
         if (!selectedSwap) {
             selectedSwap = { cIdx, pId, team };
-            render();
         } else {
-            const court = state.courts[cIdx];
-            if (selectedSwap.cIdx === cIdx && selectedSwap.pId !== pId) {
-                const srcTeam = selectedSwap.team === 'A' ? court.teamA : court.teamB;
-                const destTeam = team === 'A' ? court.teamA : court.teamB;
-                const srcIdx = srcTeam.findIndex(p => p.id === selectedSwap.pId);
-                const destIdx = destTeam.findIndex(p => p.id === pId);
-                [srcTeam[srcIdx], destTeam[destIdx]] = [destTeam[destIdx], srcTeam[srcIdx]];
-                sync();
+            if (selectedSwap.cIdx === cIdx) {
+                if (selectedSwap.pId !== pId) {
+                    const court = state.courts[cIdx];
+                    const srcTeam = selectedSwap.team === 'A' ? court.teamA : court.teamB;
+                    const destTeam = team === 'A' ? court.teamA : court.teamB;
+                    const srcIdx = srcTeam.findIndex(p => p.id === selectedSwap.pId);
+                    const destIdx = destTeam.findIndex(p => p.id === pId);
+                    const temp = srcTeam[srcIdx];
+                    srcTeam[srcIdx] = destTeam[destIdx];
+                    destTeam[destIdx] = temp;
+                }
             }
             selectedSwap = null;
-            render();
+        }
+        render(true);
+    }
+
+    function sitOut(cIdx, pId, team) {
+        if (!state.isAdmin) return;
+        const court = state.courts[cIdx];
+        const teamArr = team === 'A' ? court.teamA : court.teamB;
+        const pIdx = teamArr.findIndex(p => p.id === pId);
+        if (pIdx > -1) {
+            const p = teamArr.splice(pIdx, 1)[0];
+            p.gamesInRow = 0;
+            state.players.push(p);
+            fillCourts();
+            render(true);
         }
     }
 
     function finishMatch(idx, winTeam) {
+        if (!state.isAdmin) return;
         const c = state.courts[idx];
         const winners = winTeam === 'A' ? c.teamA : c.teamB;
         const losers = winTeam === 'A' ? c.teamB : c.teamA;
         losers.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
-        
         if (state.mode === '4on') {
             winners.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
             c.teamA = []; c.teamB = [];
@@ -195,77 +384,74 @@ const firebaseConfig = {
             winners.forEach(p => p.gamesInRow++);
             const stayers = winners.filter(p => p.gamesInRow < 2);
             winners.filter(p => p.gamesInRow >= 2).forEach(p => { p.gamesInRow = 0; state.players.push(p); });
-            c.teamA = stayers.slice(0, 1); c.teamB = stayers.slice(1, 2);
+            c.teamA = stayers.slice(0, 1);
+            c.teamB = stayers.slice(1, 2);
         }
-        state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
-        if (state.isAdmin) fillCourts();
-        sync();
+        fillCourts();
+        render(true);
     }
 
-    function fillCourts() {
-        if (!state.sessionActive) return;
-        while (state.courts.length < state.numCourts) state.courts.push({ name: `Court ${state.courts.length + 1}`, teamA: [], teamB: [] });
-        state.courts.forEach(c => {
-            while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
-                if (c.teamA.length < 2) c.teamA.push(state.players.shift());
-                else c.teamB.push(state.players.shift());
-            }
-        });
-    }
-
-    // --- ADMIN ACTIONS ---
-    function startSession() { state.sessionActive = true; fillCourts(); sync(true); }
-    function endSession() { if(confirm("End?")) { state.sessionActive = false; state.players = []; state.courts = []; sync(true); } }
-    function changeCourts(v) { state.numCourts = Math.max(1, state.numCourts + v); if(state.sessionActive) fillCourts(); sync(true); }
-    function updateMode() { state.mode = document.getElementById('playMode').value; sync(true); }
-
-    // --- RENDER ---
-    function render() {
-        document.getElementById('status-bar').innerText = state.sessionActive ? "Session Live" : "Waiting for Admin";
-        document.getElementById('courtDisplay').innerText = state.numCourts;
+    function render(push = true) {
+        if (push && state.isAdmin) pushToCloud();
         
+        document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
+        document.getElementById('courtCountDisplay').innerText = state.numCourts;
+        document.getElementById('modeNameDisplay').innerText = state.mode === '4on' ? "4 on / 4 off" : "2 on / 2 off";
+        document.getElementById('rulesText').innerHTML = state.mode === '4on' ? "All rotate out." : "Winners stay & split. Max 2 games.";
+
+        let onCourt = 0;
+        state.courts.forEach(c => onCourt += (c.teamA.length + c.teamB.length));
+        document.getElementById('totalCount').innerText = onCourt + state.players.length;
+        document.getElementById('queueCount').innerText = state.players.length;
+
         const qList = document.getElementById('queueList');
         qList.innerHTML = '';
         state.players.forEach((p, i) => {
             const div = document.createElement('div');
-            div.className = 'queue-item';
-            div.innerHTML = `
-                <span>${p.name}</span>
-                <div>
-                    <button class="btn-outline" onclick="moveInQueue(${i}, -1)">↑</button>
-                    <button class="btn-outline" onclick="moveInQueue(${i}, 1)">↓</button>
-                    <button class="btn-danger" style="padding:2px 6px" onclick="state.players.splice(${i},1); sync();">X</button>
-                </div>`;
+            div.className = 'card';
+            div.style = "display:flex; justify-content:space-between; padding:10px; margin-bottom:5px;";
+            div.innerHTML = `<span>${i + 1}. <b>${p.name}</b></span>
+                <button class="btn btn-danger admin-only" onclick="state.players.splice(${i}, 1); render(true);">X</button>`;
             qList.appendChild(div);
         });
 
         const container = document.getElementById('courtsContainer');
         container.innerHTML = '';
-        if (!state.sessionActive) { container.innerHTML = "<h3>Session Inactive</h3>"; return; }
+        if(!state.sessionActive) {
+            container.innerHTML = "<h3 style='text-align:center; padding: 50px; color:#666;'>No active session.</h3>";
+            return;
+        }
 
         state.courts.forEach((c, i) => {
             const courtDiv = document.createElement('div');
-            courtDiv.className = `court ${state.lastUpdate.courtIdx === i ? 'blink-update' : ''}`;
+            courtDiv.className = `court ${blinkingCourts.has(i) ? 'blink-update' : ''}`;
             
-            const pMap = (p, t) => `
-                <div class="player-slot">
-                    <b>${p.name}</b>
-                    <div style="margin-top:5px">
-                        <button class="btn-outline ${selectedSwap?.pId === p.id ? 'btn-primary' : ''}" onclick="handleSwapClick(${i}, ${p.id}, '${t}')">Swap</button>
-                        <button class="btn-outline" onclick="sitOut(${i}, ${p.id}, '${t}')">Sit</button>
-                    </div>
-                </div>`;
+            const createPlayerHtml = (p, teamChar) => {
+                const isSwapping = selectedSwap && selectedSwap.pId === p.id;
+                return `
+                    <div class="player-slot">
+                        <span class="player-name">${p.name}</span>
+                        <div class="action-btns admin-only">
+                            <button class="btn ${isSwapping ? 'btn-accent' : 'btn-outline'}" 
+                                onclick="handleSwapClick(${i}, ${p.id}, '${teamChar}')">Swap</button>
+                            <button class="btn btn-danger" 
+                                onclick="sitOut(${i}, ${p.id}, '${teamChar}')">Sit Out</button>
+                        </div>
+                    </div>`;
+            };
 
             courtDiv.innerHTML = `
-                <h4 style="margin:0 0 10px 0">${c.name}</h4>
-                <div class="match-area">
-                    <div class="team-box">${c.teamA.map(p => pMap(p, 'A')).join('')}</div>
-                    <div style="font-weight:bold; text-align:center; padding-top:50px">VS</div>
-                    <div class="team-box">${c.teamB.map(p => pMap(p, 'B')).join('')}</div>
+                <div style="text-align:center; margin-bottom:15px;">
+                    <input type="text" style="font-weight:bold; border:none; text-align:center; font-size:1.1rem" value="${c.name}" onchange="state.courts[${i}].name=this.value; render(true);" ${state.isAdmin ? '' : 'readonly'}>
                 </div>
-                <div style="display:flex; gap:10px; margin-top:15px">
-                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'A')">T1 Win</button>
-                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'B')">T2 Win</button>
+                <div class="match-area">
+                    <div class="team-box"><small>T1</small><hr>${c.teamA.map(p => createPlayerHtml(p, 'A')).join('')}</div>
+                    <div style="text-align:center; font-weight:bold; padding-top:80px;">VS</div>
+                    <div class="team-box"><small>T2</small><hr>${c.teamB.map(p => createPlayerHtml(p, 'B')).join('')}</div>
+                </div>
+                <div class="admin-only" style="margin-top:20px; display:flex; gap:10px;">
+                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'A')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T1 Wins</button>
+                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'B')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T2 Wins</button>
                 </div>`;
             container.appendChild(courtDiv);
         });
