@@ -75,17 +75,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        .rules-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #af8600;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        .rules-content { font-size: 1.2rem; font-weight: 600; }
-
         .courts-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -100,99 +89,65 @@
             transition: background-color 0.5s ease;
         }
 
-        /* Court Blink Animation */
-        .blink-update {
-            animation: yellowPulse 1.5s infinite;
-        }
-
+        .blink-update { animation: yellowPulse 1.5s infinite; }
         @keyframes yellowPulse {
             0% { background-color: white; }
             50% { background-color: #fffde7; border-color: #fbc02d; }
             100% { background-color: white; }
         }
 
-        /* Match Popup Notification */
         #matchNotification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            background: var(--dark);
-            color: white;
-            padding: 20px 40px;
-            border-radius: 50px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border: 3px solid var(--accent);
-            text-align: center;
-            display: none;
-            min-width: 300px;
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; background: var(--dark); color: white;
+            padding: 20px 40px; border-radius: 50px; border: 3px solid var(--accent);
+            text-align: center; display: none; min-width: 300px;
         }
 
         .match-area {
-            display: grid;
-            grid-template-columns: 1fr 40px 1fr;
-            gap: 10px;
-            align-items: start;
-            text-align: center;
+            display: grid; grid-template-columns: 1fr 40px 1fr; gap: 10px; align-items: start;
         }
 
         .team-box {
-            padding: 10px;
-            background: #fdfdfd;
-            border: 2px solid #f0f0f0;
-            border-radius: 10px;
-            min-height: 150px;
+            padding: 10px; background: #fdfdfd; border: 2px solid #f0f0f0; border-radius: 10px; min-height: 180px;
         }
 
         .player-slot {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 6px;
-            transition: background 0.2s;
-            border: 1px solid transparent;
+            margin-bottom: 12px; padding: 10px; border-radius: 8px;
+            background: white; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .selected-for-swap {
-            background-color: var(--accent) !important;
-            border: 1px solid var(--dark) !important;
-            color: var(--dark) !important;
+        .player-name { display: block; font-weight: bold; margin-bottom: 8px; font-size: 1rem; }
+
+        .action-btns { display: flex; gap: 5px; justify-content: center; }
+
+        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-accent { background: var(--accent); color: var(--dark); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 1px solid #ccc; color: #666; }
+        
+        .btn-active-swap { background: var(--accent) !important; color: var(--dark) !important; border: 1px solid var(--dark); animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
 
         .vs-circle {
-            background: var(--primary); color: white;
-            width: 30px; height: 30px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            margin: 60px auto 0; font-weight: bold; font-size: 0.8rem;
+            background: var(--primary); color: white; width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; margin: 80px auto 0; font-weight: bold;
         }
-
-        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-primary { background: var(--primary); color: white; width: 100%; }
-        .btn-accent { background: var(--accent); color: var(--dark); }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-sm { padding: 4px 8px; font-size: 0.7rem; }
 
         .queue-item {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 10px; background: white; border: 1px solid #ddd;
-            margin-bottom: 8px; border-radius: 8px;
+            padding: 10px; background: white; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 8px;
         }
 
         .admin-only { display: none; }
         .is-admin .admin-only { display: block; }
         .is-admin .user-only { display: none; }
         .hidden { display: none !important; }
-        .tag-sit { cursor: pointer; color: var(--danger); font-size: 0.7rem; text-decoration: underline; display: block; margin-top: 4px;}
-        
-        .court-name-input {
-            border: none;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--primary);
-            width: 100%;
-            text-align: center;
-            margin-bottom: 10px;
-        }
     </style>
 </head>
 <body class="user-mode">
@@ -210,14 +165,14 @@
 <div class="main-layout">
     <aside>
         <section id="loginSection" class="card user-only">
-            <input type="password" id="adminPass" placeholder="Admin PW" style="width: 70%; padding: 8px;">
-            <button class="btn btn-sm btn-primary" onclick="checkAdmin()" style="width: auto;">Login</button>
+            <input type="password" id="adminPass" placeholder="Admin PW" style="width: 60%; padding: 8px;">
+            <button class="btn btn-primary" onclick="checkAdmin()">Login</button>
         </section>
 
         <section id="adminDashboard" class="card admin-only">
             <h3>Admin Controls</h3>
-            <button class="btn btn-accent btn-sm" id="startBtn" onclick="startSession()">Start Session</button>
-            <button class="btn btn-danger btn-sm" onclick="endSession()">End Session</button>
+            <button class="btn btn-accent" id="startBtn" onclick="startSession()">Start Session</button>
+            <button class="btn btn-danger" onclick="endSession()">End Session</button>
             <hr>
             <div style="margin: 10px 0;">
                 <label>Mode: </label>
@@ -228,18 +183,18 @@
             </div>
             <div>
                 <label>Courts: </label>
-                <button class="btn btn-sm" onclick="changeCourts(-1)">-</button>
-                <span id="courtCountDisplay" style="font-weight:bold;">1</span>
-                <button class="btn btn-sm" onclick="changeCourts(1)">+</button>
+                <button class="btn btn-outline" onclick="changeCourts(-1)">-</button>
+                <span id="courtCountDisplay" style="margin: 0 10px; font-weight:bold;">1</span>
+                <button class="btn btn-outline" onclick="changeCourts(1)">+</button>
             </div>
-            <button class="btn btn-sm" onclick="logout()" style="margin-top:10px; width:100%">Logout Admin</button>
+            <button class="btn btn-outline" onclick="logout()" style="margin-top:10px; width:100%">Logout Admin</button>
         </section>
 
         <section class="card">
             <input type="text" id="playerName" placeholder="Enter Player Name..." 
                    style="width: 100%; padding: 12px; box-sizing: border-box; margin-bottom: 10px;" 
                    onkeypress="if(event.key === 'Enter') joinQueue()">
-            <button class="btn btn-primary" onclick="joinQueue()">Add to Queue</button>
+            <button class="btn btn-primary" style="width:100%" onclick="joinQueue()">Add to Queue</button>
         </section>
 
         <div class="stats-bar">
@@ -253,30 +208,29 @@
 
     <main>
         <div id="rulesDisplay" class="rules-box">
-            <span class="rules-title">Current Rotation: <span id="modeNameDisplay">4 on / 4 off</span></span>
-            <div id="rulesText" class="rules-content">Rotate all players.</div>
+            <span id="modeNameDisplay" style="font-weight: 800; color: #af8600; font-size: 1.2rem;">4 on / 4 off</span>
+            <div id="rulesText">All players rotate out after the match.</div>
         </div>
         <div id="courtsContainer" class="courts-grid"></div>
     </main>
 </div>
 
 <script>
-    // --- 1. CONFIGURATION ---
-const firebaseConfig = {
-    apiKey: "AIzaSyDcXbm3UCGro4A3NPEEAHfp6ngNQ8ZtMUQ",
-    authDomain: "pickleplay-59ba8.firebaseapp.com",
-    databaseURL: "https://pickleplay-59ba8-default-rtdb.firebaseio.com",
-    projectId: "pickleplay-59ba8",
-    storageBucket: "pickleplay-59ba8.firebasestorage.app",
-    messagingSenderId: "167188727754",
-    appId: "1:167188727754:web:783381a771775130e17133"
-  };
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "PASTE_HERE",
+        authDomain: "PASTE_HERE",
+        databaseURL: "PASTE_HERE",
+        projectId: "PASTE_HERE",
+        storageBucket: "PASTE_HERE",
+        messagingSenderId: "PASTE_HERE",
+        appId: "PASTE_HERE"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const stateRef = db.ref('pickleball_state');
 
-    // --- 2. GLOBAL STATE ---
     let state = {
         isAdmin: false,
         sessionActive: false,
@@ -284,12 +238,12 @@ const firebaseConfig = {
         numCourts: 1,
         players: [],
         courts: [],
-        lastUpdate: { timestamp: 0, courtIdx: -1 } // Sync the blink/popup
+        lastUpdate: { timestamp: 0, courtIdx: -1 }
     };
-    let selectedPlayer = null; 
+    
+    let selectedSwap = null; 
     let blinkingCourts = new Set();
 
-    // --- 3. SYNC LOGIC ---
     function pushToCloud() {
         stateRef.set({
             sessionActive: state.sessionActive,
@@ -297,74 +251,63 @@ const firebaseConfig = {
             numCourts: state.numCourts,
             players: state.players,
             courts: state.courts,
-            lastUpdate: state.lastUpdate // Push update info to cloud
+            lastUpdate: state.lastUpdate
         });
     }
 
     stateRef.on('value', (snapshot) => {
         const cloudData = snapshot.val();
         if (cloudData) {
-            // Check if there is a NEW match update since we last saw the data
             if (cloudData.lastUpdate && cloudData.lastUpdate.timestamp > state.lastUpdate.timestamp) {
                 const idx = cloudData.lastUpdate.courtIdx;
-                const court = cloudData.courts[idx];
-                if (court) {
+                if (idx !== -1 && cloudData.courts[idx]) {
                     triggerCourtBlink(idx);
-                    showMatchPopup(court.name, court.teamA, court.teamB);
+                    showMatchPopup(cloudData.courts[idx].name, cloudData.courts[idx].teamA, cloudData.courts[idx].teamB);
                 }
             }
-
             state.sessionActive = cloudData.sessionActive;
             state.mode = cloudData.mode;
             state.numCourts = cloudData.numCourts;
             state.players = cloudData.players || [];
             state.courts = cloudData.courts || [];
             state.lastUpdate = cloudData.lastUpdate || { timestamp: 0, courtIdx: -1 };
-            
-            document.getElementById('playMode').value = state.mode;
-            document.getElementById('courtCountDisplay').innerText = state.numCourts;
-            document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
-            
-            updateRulesUI();
             render(false);
         }
     });
 
-    // --- 4. CORE APP FUNCTIONS ---
     function showMatchPopup(courtName, teamA, teamB) {
         const names = [...teamA, ...teamB].map(p => p.name).join(' & ');
         const el = document.getElementById('matchNotification');
-        const text = document.getElementById('matchNames');
-        
-        text.innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
+        document.getElementById('matchNames').innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
         el.style.display = 'block';
-        
         setTimeout(() => { el.style.display = 'none'; }, 6000);
+    }
+
+    function triggerCourtBlink(idx) {
+        blinkingCourts.add(idx);
+        render(false);
+        setTimeout(() => { blinkingCourts.delete(idx); render(false); }, 5000);
     }
 
     function checkAdmin() {
         if (document.getElementById('adminPass').value === 'admin123') {
             state.isAdmin = true;
             document.body.className = 'is-admin';
-            render(true);
-        } else { alert("Incorrect Password"); }
+            render(false);
+        } else alert("Incorrect PW");
     }
 
-    function logout() {
-        state.isAdmin = false;
-        document.body.className = 'user-mode';
-        render(false);
-    }
+    function logout() { state.isAdmin = false; document.body.className = 'user-mode'; render(false); }
 
     function startSession() {
         state.sessionActive = true;
-        updateMode();
+        state.mode = document.getElementById('playMode').value;
         fillCourts();
         render(true);
     }
 
     function endSession() {
-        if(!confirm("End session and clear cloud data?")) return;
+        if(!confirm("Clear all data?")) return;
         state.sessionActive = false;
         state.players = [];
         state.courts = [];
@@ -372,23 +315,7 @@ const firebaseConfig = {
         pushToCloud();
     }
 
-    function updateMode() {
-        state.mode = document.getElementById('playMode').value;
-        updateRulesUI();
-        render(true);
-    }
-
-    function updateRulesUI() {
-        const rules = document.getElementById('rulesText');
-        const modeLabel = document.getElementById('modeNameDisplay');
-        if (state.mode === '4on') {
-            modeLabel.innerText = "4 on / 4 off";
-            rules.innerText = "All players rotate out after the match.";
-        } else {
-            modeLabel.innerText = "2 on / 2 off";
-            rules.innerHTML = "• Winners stay & split<br>• Max 2 consecutive games";
-        }
-    }
+    function updateMode() { state.mode = document.getElementById('playMode').value; render(true); }
 
     function changeCourts(val) {
         state.numCourts = Math.max(1, state.numCourts + val);
@@ -415,47 +342,52 @@ const firebaseConfig = {
             state.players.unshift(...c.teamA, ...c.teamB);
         }
         state.courts.forEach((c, idx) => {
-            let newlyFilled = false;
+            let filled = false;
             while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
-                newlyFilled = true;
+                filled = true;
                 if (c.teamA.length < 2) c.teamA.push(state.players.shift());
                 else c.teamB.push(state.players.shift());
             }
-            if(newlyFilled) {
-                // Set the global update state so other devices trigger effects
+            if(filled) {
                 state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
+                triggerCourtBlink(idx);
+                showMatchPopup(c.name, c.teamA, c.teamB);
             }
         });
     }
 
-    function triggerCourtBlink(idx) {
-        blinkingCourts.add(idx);
-        render(false); // Update UI to show blink
-        setTimeout(() => {
-            blinkingCourts.delete(idx);
-            render(false);
-        }, 5000); 
+    function handleSwapClick(cIdx, pId, team) {
+        if (!selectedSwap) {
+            selectedSwap = { cIdx, pId, team };
+        } else {
+            // Only swap if on the same court
+            if (selectedSwap.cIdx === cIdx) {
+                if (selectedSwap.pId !== pId) {
+                    const court = state.courts[cIdx];
+                    const srcTeam = selectedSwap.team === 'A' ? court.teamA : court.teamB;
+                    const destTeam = team === 'A' ? court.teamA : court.teamB;
+                    const srcIdx = srcTeam.findIndex(p => p.id === selectedSwap.pId);
+                    const destIdx = destTeam.findIndex(p => p.id === pId);
+                    
+                    const temp = srcTeam[srcIdx];
+                    srcTeam[srcIdx] = destTeam[destIdx];
+                    destTeam[destIdx] = temp;
+                }
+            }
+            selectedSwap = null;
+        }
+        render(true);
     }
 
-    function handlePlayerClick(cIdx, pId, team) {
-        if (!selectedPlayer) {
-            selectedPlayer = { cIdx, pId, team };
-            render(false);
-        } else {
-            const court = state.courts[cIdx];
-            if (selectedPlayer.cIdx !== cIdx || selectedPlayer.pId === pId) {
-                selectedPlayer = (selectedPlayer.pId === pId) ? null : { cIdx, pId, team }; 
-                render(false);
-                return;
-            }
-            const teamSrc = selectedPlayer.team === 'A' ? court.teamA : court.teamB;
-            const teamDest = team === 'A' ? court.teamA : court.teamB;
-            const srcIdx = teamSrc.findIndex(x => x.id === selectedPlayer.pId);
-            const destIdx = teamDest.findIndex(x => x.id === pId);
-            const temp = teamSrc[srcIdx];
-            teamSrc[srcIdx] = teamDest[destIdx];
-            teamDest[destIdx] = temp;
-            selectedPlayer = null;
+    function sitOut(cIdx, pId, team) {
+        const court = state.courts[cIdx];
+        const teamArr = team === 'A' ? court.teamA : court.teamB;
+        const pIdx = teamArr.findIndex(p => p.id === pId);
+        if (pIdx > -1) {
+            const p = teamArr.splice(pIdx, 1)[0];
+            p.gamesInRow = 0;
+            state.players.push(p);
+            fillCourts();
             render(true);
         }
     }
@@ -479,27 +411,15 @@ const firebaseConfig = {
         render(true);
     }
 
-    function sitOut(cIdx, pId, fromTeam) {
-        const court = state.courts[cIdx];
-        let p;
-        if(fromTeam === 'A') {
-            const idx = court.teamA.findIndex(x => x.id === pId);
-            p = court.teamA.splice(idx, 1)[0];
-        } else {
-            const idx = court.teamB.findIndex(x => x.id === pId);
-            p = court.teamB.splice(idx, 1)[0];
-        }
-        p.gamesInRow = 0;
-        state.players.push(p);
-        fillCourts();
-        render(true);
-    }
-
-    // --- 5. RENDER ENGINE ---
     function render(push = true) {
         if (push) pushToCloud();
+        
+        document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
+        document.getElementById('courtCountDisplay').innerText = state.numCourts;
+        document.getElementById('playMode').value = state.mode;
+        document.getElementById('modeNameDisplay').innerText = state.mode === '4on' ? "4 on / 4 off" : "2 on / 2 off";
+        document.getElementById('rulesText').innerHTML = state.mode === '4on' ? "All rotate out." : "Winners stay & split. Max 2 games.";
 
-        document.getElementById('startBtn').className = state.sessionActive ? "hidden" : "btn btn-accent btn-sm";
         let onCourt = 0;
         state.courts.forEach(c => onCourt += (c.teamA.length + c.teamB.length));
         document.getElementById('totalCount').innerText = onCourt + state.players.length;
@@ -511,48 +431,53 @@ const firebaseConfig = {
             const div = document.createElement('div');
             div.className = 'queue-item';
             div.innerHTML = `<span>${i + 1}. <b>${p.name}</b></span>
-                <button class="btn btn-danger btn-sm" onclick="state.players.splice(${i}, 1); render(true);">×</button>`;
+                <button class="btn btn-danger" onclick="state.players.splice(${i}, 1); render(true);">Remove</button>`;
             qList.appendChild(div);
         });
 
         const container = document.getElementById('courtsContainer');
         container.innerHTML = '';
         if(!state.sessionActive) {
-            container.innerHTML = "<h3 style='text-align:center; padding: 50px; color:#666;'>No active session. Admin please log in to start.</h3>";
+            container.innerHTML = "<h3 style='text-align:center; padding: 50px; color:#666;'>No active session.</h3>";
             return;
         }
 
         state.courts.forEach((c, i) => {
-            const isFull = (c.teamA.length + c.teamB.length) === 4;
             const courtDiv = document.createElement('div');
             courtDiv.className = `court ${blinkingCourts.has(i) ? 'blink-update' : ''}`;
             
-            const renderTeam = (teamArr, teamChar) => teamArr.map(p => `
-                <div class="player-slot ${selectedPlayer && selectedPlayer.pId === p.id ? 'selected-for-swap' : ''}" 
-                     onclick="handlePlayerClick(${i}, ${p.id}, '${teamChar}')" style="cursor:pointer;">
-                    <b>${p.name}</b>
-                    <span class="tag-sit" onclick="event.stopPropagation(); sitOut(${i}, ${p.id}, '${teamChar}')">Sit Out</span>
-                    <small style="font-size:0.65rem; opacity:0.8;">(Click to swap)</small>
-                </div>`).join('');
+            const createPlayerHtml = (p, teamChar) => {
+                const isSwapping = selectedSwap && selectedSwap.pId === p.id;
+                return `
+                    <div class="player-slot">
+                        <span class="player-name">${p.name}</span>
+                        <div class="action-btns">
+                            <button class="btn ${isSwapping ? 'btn-active-swap' : 'btn-outline'}" 
+                                onclick="handleSwapClick(${i}, ${p.id}, '${teamChar}')">Swap</button>
+                            <button class="btn btn-danger" 
+                                onclick="sitOut(${i}, ${p.id}, '${teamChar}')">Sit Out</button>
+                        </div>
+                    </div>`;
+            };
 
             courtDiv.innerHTML = `
-                <div class="court-header">
-                    <input type="text" class="court-name-input" value="${c.name}" ${state.isAdmin ? "" : "readonly"} onchange="state.courts[${i}].name=this.value; render(true);">
+                <div style="text-align:center; margin-bottom:15px;">
+                    <input type="text" style="font-weight:bold; border:none; text-align:center; font-size:1.1rem" value="${c.name}" onchange="state.courts[${i}].name=this.value; render(true);" ${state.isAdmin ? '' : 'readonly'}>
                 </div>
                 <div class="match-area">
                     <div class="team-box">
-                        <small style="color:var(--primary); font-weight:900">TEAM 1</small><hr>
-                        ${renderTeam(c.teamA, 'A')}
+                        <small>TEAM 1</small><hr>
+                        ${c.teamA.map(p => createPlayerHtml(p, 'A')).join('')}
                     </div>
                     <div class="vs-circle">VS</div>
                     <div class="team-box">
-                        <small style="color:var(--primary); font-weight:900">TEAM 2</small><hr>
-                        ${renderTeam(c.teamB, 'B')}
+                        <small>TEAM 2</small><hr>
+                        ${c.teamB.map(p => createPlayerHtml(p, 'B')).join('')}
                     </div>
                 </div>
                 <div style="margin-top:20px; display:flex; gap:10px;">
-                    <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'A')" ${!isFull ? 'disabled' : ''}>T1 Wins</button>
-                    <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'B')" ${!isFull ? 'disabled' : ''}>T2 Wins</button>
+                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'A')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T1 Wins</button>
+                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'B')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T2 Wins</button>
                 </div>`;
             container.appendChild(courtDiv);
         });
