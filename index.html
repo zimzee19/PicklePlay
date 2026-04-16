@@ -230,16 +230,18 @@ const firebaseConfig = {
 
     // --- SYNC & RENDER (Same Logic as before, just safer) ---
     function pushToCloud() {
-        if (!state.isAdmin) return; // Non-admins can't push
-        stateRef.set({
-            sessionActive: state.sessionActive,
-            mode: state.mode,
-            numCourts: state.numCourts,
-            players: state.players,
-            courts: state.courts,
-            lastUpdate: state.lastUpdate
-        });
-    }
+    // Only admins should be calling the full sync
+    if (!state.isAdmin) return; 
+
+    db.ref('pickleball_state').update({
+        sessionActive: state.sessionActive,
+        mode: state.mode,
+        numCourts: state.numCourts,
+        players: state.players,
+        courts: state.courts,
+        lastUpdate: state.lastUpdate
+    });
+}
 
     stateRef.on('value', (snapshot) => {
         const cloudData = snapshot.val();
@@ -303,13 +305,27 @@ const firebaseConfig = {
     }
 
     function joinQueue() {
-        const input = document.getElementById('playerName');
-        if (!input.value.trim()) return;
-        state.players.push({ id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 });
-        input.value = '';
-        if(state.sessionActive) fillCourts();
-        render(true);
-    }
+    const input = document.getElementById('playerName');
+    if (!input.value.trim()) return;
+    
+    const newPlayer = { id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 };
+    
+    // Add locally
+    state.players.push(newPlayer);
+    input.value = '';
+
+    // If session is active, we need to update the queue in the cloud
+    // We use .update() instead of .set() to avoid overwriting admin-only areas
+    db.ref('pickleball_state').update({
+        players: state.players
+    }).then(() => {
+        console.log("Queue synced successfully");
+    }).catch((err) => {
+        console.error("Sync failed: ", err.message);
+    });
+
+    render(false); // Render locally immediately
+}
 
     function fillCourts() {
         if (!state.sessionActive) return;
