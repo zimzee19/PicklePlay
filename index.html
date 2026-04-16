@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickleball Pro Open Play</title>
+    <style>
+        :root {
+            --primary: #2e7d32;
+            --accent: #c6ff00;
+            --dark: #1b5e20;
+            --light: #f1f8e9;
+            --danger: #d32f2f;
+            --card-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: #f0f2f0;
+            margin: 0;
+            color: #333;
+            padding-bottom: 50px;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 25px;
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .rules-box {
+            background: #fff9c4;
+            padding: 20px;
+            border: 2px solid #fbc02d;
+            margin-bottom: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .rules-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #af8600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .rules-content {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .courts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .court {
+            border: 4px solid var(--primary);
+            border-radius: 15px;
+            padding: 20px;
+            background: white;
+        }
+
+        .court-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .court-name-input {
+            font-size: 1.4rem;
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            width: 80%;
+        }
+
+        .is-admin .court-name-input { border-bottom: 1px dashed #ccc; }
+
+        .match-area {
+            display: grid;
+            grid-template-columns: 1fr 40px 1fr;
+            gap: 10px;
+            align-items: start;
+            text-align: center;
+        }
+
+        .team-box {
+            padding: 10px;
+            background: #fdfdfd;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            min-height: 150px;
+        }
+
+        .player-slot {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .player-slot:hover { background: #f0f0f0; }
+
+        .selected-for-swap {
+            background-color: var(--accent) !important;
+            border: 1px solid var(--dark) !important;
+            color: var(--dark) !important;
+        }
+
+        .vs-circle {
+            background: var(--primary); color: white;
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 60px auto 0; font-weight: bold; font-size: 0.8rem;
+        }
+
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: var(--primary); color: white; width: 100%; }
+        .btn-accent { background: var(--accent); color: var(--dark); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 0.7rem; }
+
+        .queue-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; background: white; border: 1px solid #ddd;
+            margin-bottom: 8px; border-radius: 8px; cursor: grab;
+        }
+        .queue-item.dragging { opacity: 0.4; border: 2px dashed var(--primary); }
+
+        .admin-only { display: none; }
+        .is-admin .admin-only { display: block; }
+        .is-admin .user-only { display: none; }
+        .hidden { display: none !important; }
+        .tag-sit { cursor: pointer; color: var(--danger); font-size: 0.7rem; text-decoration: underline; display: block; margin-top: 4px;}
+    </style>
+</head>
+<body class="user-mode">
+
+<header>
+    <h1>Pickleball Open Play</h1>
+    <div id="status-bar">User Access</div>
+</header>
+
+<div class="main-layout">
+    <aside>
+        <section id="loginSection" class="card user-only">
+            <input type="password" id="adminPass" placeholder="Admin PW" style="width: 70%; padding: 8px;">
+            <button class="btn btn-sm btn-primary" onclick="checkAdmin()" style="width: auto;">Login</button>
+        </section>
+
+        <section id="adminDashboard" class="card admin-only">
+            <h3>Admin Controls</h3>
+            <button class="btn btn-accent btn-sm" id="startBtn" onclick="startSession()">Start Session</button>
+            <button class="btn btn-danger btn-sm" onclick="endSession()">End Session</button>
+            <hr>
+            <div style="margin: 10px 0;">
+                <label>Mode: </label>
+                <select id="playMode" onchange="updateMode()">
+                    <option value="4on">4 on / 4 off</option>
+                    <option value="2on">2 on / 2 off</option>
+                </select>
+            </div>
+            <div>
+                <label>Courts: </label>
+                <button class="btn btn-sm" onclick="changeCourts(-1)">-</button>
+                <span id="courtCountDisplay" style="font-weight:bold;">1</span>
+                <button class="btn btn-sm" onclick="changeCourts(1)">+</button>
+            </div>
+            <button class="btn btn-sm" onclick="logout()" style="margin-top:10px; width:100%">Logout Admin</button>
+        </section>
+
+        <section class="card">
+            <input type="text" id="playerName" placeholder="Enter Player Name..." 
+                   style="width: 100%; padding: 12px; box-sizing: border-box; margin-bottom: 10px;" 
+                   onkeypress="if(event.key === 'Enter') joinQueue()">
+            <button class="btn btn-primary" onclick="joinQueue()">Add to Queue</button>
+        </section>
+
+        <div class="stats-bar">
+            <span>Total Players: <span id="totalCount">0</span></span>
+            <span>In Queue: <span id="queueCount">0</span></span>
+        </div>
+
+        <h3>Waiting Queue</h3>
+        <div id="queueList"></div>
+    </aside>
+
+    <main>
+        <div id="rulesDisplay" class="rules-box">
+            <span class="rules-title">Current Rotation: <span id="modeNameDisplay">4 on / 4 off</span></span>
+            <div id="rulesText" class="rules-content">Rotate all players.</div>
+        </div>
+
+        <div id="courtsContainer" class="courts-grid"></div>
+    </main>
+</div>
+
+<script>
+    // INITIAL STATE & LOCALSTORAGE LOAD
+    let state = {
+        isAdmin: false,
+        sessionActive: false,
+        mode: '4on',
+        numCourts: 1,
+        players: [],
+        courts: [] 
+    };
+
+    let selectedPlayer = null; 
+
+    // SAVE DATA TO BROWSER
+    function saveData() {
+        localStorage.setItem('pickleball_state', JSON.stringify({
+            sessionActive: state.sessionActive,
+            mode: state.mode,
+            numCourts: state.numCourts,
+            players: state.players,
+            courts: state.courts
+        }));
+    }
+
+    // LOAD DATA FROM BROWSER
+    function loadData() {
+        const saved = localStorage.getItem('pickleball_state');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            state.sessionActive = parsed.sessionActive;
+            state.mode = parsed.mode;
+            state.numCourts = parsed.numCourts;
+            state.players = parsed.players;
+            state.courts = parsed.courts;
+
+            // Sync the Admin UI elements with the loaded state
+            document.getElementById('playMode').value = state.mode;
+            document.getElementById('courtCountDisplay').innerText = state.numCourts;
+            
+            if (state.sessionActive) {
+                document.getElementById('startBtn').classList.add('hidden');
+                updateRulesUI();
+            }
+        }
+    }
+
+    function checkAdmin() {
+        if (document.getElementById('adminPass').value === 'admin123') {
+            state.isAdmin = true;
+            document.body.className = 'is-admin';
+            document.getElementById('status-bar').innerText = "Mode: Administrator";
+            render();
+        } else { alert("Wrong Password"); }
+    }
+
+    function logout() {
+        state.isAdmin = false;
+        document.body.className = 'user-mode';
+        document.getElementById('status-bar').innerText = "User Access";
+        render();
+    }
+
+    function startSession() {
+        state.sessionActive = true;
+        document.getElementById('startBtn').classList.add('hidden');
+        updateMode();
+        fillCourts();
+        render();
+    }
+
+    function endSession() {
+        if(!confirm("End session and clear all?")) return;
+        state.sessionActive = false;
+        state.players = [];
+        state.courts = [];
+        document.getElementById('startBtn').classList.remove('hidden');
+        saveData();
+        render();
+    }
+
+    function updateMode() {
+        state.mode = document.getElementById('playMode').value;
+        updateRulesUI();
+        render();
+    }
+
+    function updateRulesUI() {
+        const rules = document.getElementById('rulesText');
+        const modeLabel = document.getElementById('modeNameDisplay');
+        if (state.mode === '4on') {
+            modeLabel.innerText = "4 on / 4 off";
+            rules.innerText = "All players rotate out after the match.";
+        } else {
+            modeLabel.innerText = "2 on / 2 off";
+            rules.innerHTML = "• Winners stay & split<br>• Max 2 consecutive games";
+        }
+    }
+
+    function changeCourts(val) {
+        state.numCourts = Math.max(1, state.numCourts + val);
+        document.getElementById('courtCountDisplay').innerText = state.numCourts;
+        if(state.sessionActive) fillCourts();
+        render();
+    }
+
+    function joinQueue() {
+        const input = document.getElementById('playerName');
+        if (!input.value.trim()) return;
+        state.players.push({ id: Date.now() + Math.random(), name: input.value.trim(), gamesInRow: 0 });
+        input.value = '';
+        if(state.sessionActive) fillCourts();
+        render();
+    }
+
+    function fillCourts() {
+        if (!state.sessionActive) return;
+        while (state.courts.length < state.numCourts) {
+            state.courts.push({ name: `Court ${state.courts.length + 1}`, teamA: [], teamB: [] });
+        }
+        while (state.courts.length > state.numCourts) {
+            const c = state.courts.pop();
+            state.players.unshift(...c.teamA, ...c.teamB);
+        }
+        state.courts.forEach(c => {
+            while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
+                if (c.teamA.length < 2) c.teamA.push(state.players.shift());
+                else c.teamB.push(state.players.shift());
+            }
+        });
+    }
+
+    function handlePlayerClick(cIdx, pId, team) {
+        if (!selectedPlayer) {
+            selectedPlayer = { cIdx, pId, team };
+            render();
+        } else {
+            const court = state.courts[cIdx];
+            if (selectedPlayer.cIdx !== cIdx) {
+                selectedPlayer = { cIdx, pId, team }; 
+                render();
+                return;
+            }
+            if (selectedPlayer.pId === pId) {
+                selectedPlayer = null;
+                render();
+                return;
+            }
+
+            const teamSrc = selectedPlayer.team === 'A' ? court.teamA : court.teamB;
+            const teamDest = team === 'A' ? court.teamA : court.teamB;
+            
+            const srcIdx = teamSrc.findIndex(x => x.id === selectedPlayer.pId);
+            const destIdx = teamDest.findIndex(x => x.id === pId);
+
+            const temp = teamSrc[srcIdx];
+            teamSrc[srcIdx] = teamDest[destIdx];
+            teamDest[destIdx] = temp;
+
+            selectedPlayer = null;
+            render();
+        }
+    }
+
+    function finishMatch(idx, winTeam) {
+        const c = state.courts[idx];
+        const winners = winTeam === 'A' ? c.teamA : c.teamB;
+        const losers = winTeam === 'A' ? c.teamB : c.teamA;
+        losers.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
+        if (state.mode === '4on') {
+            winners.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
+            c.teamA = []; c.teamB = [];
+        } else {
+            winners.forEach(p => p.gamesInRow++);
+            const stayers = winners.filter(p => p.gamesInRow < 2);
+            winners.filter(p => p.gamesInRow >= 2).forEach(p => { p.gamesInRow = 0; state.players.push(p); });
+            c.teamA = stayers.slice(0, 1);
+            c.teamB = stayers.slice(1, 2);
+        }
+        fillCourts();
+        render();
+    }
+
+    function sitOut(cIdx, pId, fromTeam) {
+        const court = state.courts[cIdx];
+        let p;
+        if(fromTeam === 'A') {
+            const idx = court.teamA.findIndex(x => x.id === pId);
+            p = court.teamA.splice(idx, 1)[0];
+        } else {
+            const idx = court.teamB.findIndex(x => x.id === pId);
+            p = court.teamB.splice(idx, 1)[0];
+        }
+        p.gamesInRow = 0;
+        state.players.push(p);
+        fillCourts();
+        render();
+    }
+
+    let draggedIdx = null;
+
+    function render() {
+        saveData(); // Save every time a visual update happens
+
+        let onCourt = 0;
+        state.courts.forEach(c => onCourt += (c.teamA.length + c.teamB.length));
+        document.getElementById('totalCount').innerText = onCourt + state.players.length;
+        document.getElementById('queueCount').innerText = state.players.length;
+
+        const qList = document.getElementById('queueList');
+        qList.innerHTML = '';
+        state.players.forEach((p, i) => {
+            const div = document.createElement('div');
+            div.className = 'queue-item';
+            div.draggable = true;
+            div.innerHTML = `<span>${i + 1}. <b>${p.name}</b></span>
+                <button class="btn btn-danger btn-sm" onclick="state.players.splice(${i}, 1); render();">×</button>`;
+            div.ondragstart = () => { draggedIdx = i; div.classList.add('dragging'); };
+            div.ondragover = (e) => {
+                e.preventDefault();
+                if (draggedIdx !== null && draggedIdx < i) {
+                    const item = state.players.splice(draggedIdx, 1)[0];
+                    state.players.splice(i, 0, item);
+                    draggedIdx = i; render();
+                }
+            };
+            qList.appendChild(div);
+        });
+
+        const container = document.getElementById('courtsContainer');
+        container.innerHTML = '';
+        if(!state.sessionActive) {
+            container.innerHTML = "<h3 style='text-align:center; padding: 50px; color:#666;'>No active session. Admin please log in to start.</h3>";
+            return;
+        }
+
+        state.courts.forEach((c, i) => {
+            const isFull = (c.teamA.length + c.teamB.length) === 4;
+            const courtDiv = document.createElement('div');
+            courtDiv.className = 'court';
+            
+            const renderTeam = (teamArr, teamChar) => teamArr.map(p => `
+                <div class="player-slot ${selectedPlayer && selectedPlayer.pId === p.id ? 'selected-for-swap' : ''}" 
+                     onclick="handlePlayerClick(${i}, ${p.id}, '${teamChar}')" style="cursor:pointer;">
+                    <b>${p.name}</b>
+                    <span class="tag-sit" onclick="event.stopPropagation(); sitOut(${i}, ${p.id}, '${teamChar}')">Sit Out</span>
+                    <small style="font-size:0.65rem; opacity:0.8; font-style:italic;">(Click to swap)</small>
+                </div>`).join('');
+
+            courtDiv.innerHTML = `
+                <div class="court-header">
+                    <input type="text" class="court-name-input" value="${c.name}" ${state.isAdmin ? "" : "readonly"} onchange="state.courts[${i}].name=this.value; saveData();">
+                </div>
+                <div class="match-area">
+                    <div class="team-box">
+                        <small style="color:var(--primary); font-weight:900">TEAM 1</small><hr>
+                        ${renderTeam(c.teamA, 'A')}
+                    </div>
+                    <div class="vs-circle">VS</div>
+                    <div class="team-box">
+                        <small style="color:var(--primary); font-weight:900">TEAM 2</small><hr>
+                        ${renderTeam(c.teamB, 'B')}
+                    </div>
+                </div>
+                <div style="margin-top:20px; display:flex; gap:10px;">
+                    <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'A')" ${!isFull ? 'disabled' : ''}>T1 Wins</button>
+                    <button class="btn btn-primary btn-sm" onclick="finishMatch(${i}, 'B')" ${!isFull ? 'disabled' : ''}>T2 Wins</button>
+                </div>`;
+            container.appendChild(courtDiv);
+        });
+    }
+
+    // INITIALIZE
+    loadData();
+    render();
+</script>
+</body>
+</html>
