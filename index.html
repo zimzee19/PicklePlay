@@ -100,7 +100,7 @@
             transition: background-color 0.5s ease;
         }
 
-        /* NEW: Court Blink Animation */
+        /* Court Blink Animation */
         .blink-update {
             animation: yellowPulse 1.5s infinite;
         }
@@ -111,7 +111,7 @@
             100% { background-color: white; }
         }
 
-        /* NEW: Match Popup Notification */
+        /* Match Popup Notification */
         #matchNotification {
             position: fixed;
             top: 20px;
@@ -183,6 +183,16 @@
         .is-admin .user-only { display: none; }
         .hidden { display: none !important; }
         .tag-sit { cursor: pointer; color: var(--danger); font-size: 0.7rem; text-decoration: underline; display: block; margin-top: 4px;}
+        
+        .court-name-input {
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body class="user-mode">
@@ -252,15 +262,15 @@
 
 <script>
     // --- 1. CONFIGURATION ---
-const firebaseConfig = {
-    apiKey: "AIzaSyDcXbm3UCGro4A3NPEEAHfp6ngNQ8ZtMUQ",
-    authDomain: "pickleplay-59ba8.firebaseapp.com",
-    databaseURL: "https://pickleplay-59ba8-default-rtdb.firebaseio.com",
-    projectId: "pickleplay-59ba8",
-    storageBucket: "pickleplay-59ba8.firebasestorage.app",
-    messagingSenderId: "167188727754",
-    appId: "1:167188727754:web:783381a771775130e17133"
-  };
+    const firebaseConfig = {
+        apiKey: "PASTE_HERE",
+        authDomain: "PASTE_HERE",
+        databaseURL: "PASTE_HERE",
+        projectId: "PASTE_HERE",
+        storageBucket: "PASTE_HERE",
+        messagingSenderId: "PASTE_HERE",
+        appId: "PASTE_HERE"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -273,10 +283,11 @@ const firebaseConfig = {
         mode: '4on',
         numCourts: 1,
         players: [],
-        courts: [] 
+        courts: [],
+        lastUpdate: { timestamp: 0, courtIdx: -1 } // Sync the blink/popup
     };
     let selectedPlayer = null; 
-    let blinkingCourts = new Set(); // To track which courts should blink
+    let blinkingCourts = new Set();
 
     // --- 3. SYNC LOGIC ---
     function pushToCloud() {
@@ -285,47 +296,39 @@ const firebaseConfig = {
             mode: state.mode,
             numCourts: state.numCourts,
             players: state.players,
-            courts: state.courts
+            courts: state.courts,
+            lastUpdate: state.lastUpdate // Push update info to cloud
         });
     }
 
-    // --- IMPROVED SYNC LISTENER ---
-stateRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-        // 1. Capture what we currently have before updating
-        const oldCourts = JSON.parse(JSON.stringify(state.courts));
-        
-        // 2. Update the local state with new cloud data
-        state.mode = data.mode || '4on';
-        state.numCourts = data.numCourts || 1;
-        state.players = data.players || [];
-        state.courts = data.courts || [];
-        
-        // 3. COMPARE: If this isn't the first load, check for changes
-        if (oldCourts.length > 0) {
-            state.courts.forEach((court, i) => {
-                const oldCourt = oldCourts[i];
-                
-                // Detection Logic: 
-                // Was the court NOT full before, but it IS full now?
-                const isNowFull = (court.teamA.length + court.teamB.length) === 4;
-                const wasNotFull = !oldCourt || (oldCourt.teamA.length + oldCourt.teamB.length) < 4;
-
-                if (isNowFull && wasNotFull) {
-                    // This triggers on EVERY device that receives this update
-                    triggerMobileBlink(i);
-                    triggerMobilePopup(court);
+    stateRef.on('value', (snapshot) => {
+        const cloudData = snapshot.val();
+        if (cloudData) {
+            // Check if there is a NEW match update since we last saw the data
+            if (cloudData.lastUpdate && cloudData.lastUpdate.timestamp > state.lastUpdate.timestamp) {
+                const idx = cloudData.lastUpdate.courtIdx;
+                const court = cloudData.courts[idx];
+                if (court) {
+                    triggerCourtBlink(idx);
+                    showMatchPopup(court.name, court.teamA, court.teamB);
                 }
-            });
-        }
+            }
 
-        // 4. Sync UI elements and Render
-        document.getElementById('playMode').value = state.mode;
-        document.getElementById('courtCountDisplay').innerText = state.numCourts;
-        render(false); // Render UI without pushing back to cloud
-    }
-});
+            state.sessionActive = cloudData.sessionActive;
+            state.mode = cloudData.mode;
+            state.numCourts = cloudData.numCourts;
+            state.players = cloudData.players || [];
+            state.courts = cloudData.courts || [];
+            state.lastUpdate = cloudData.lastUpdate || { timestamp: 0, courtIdx: -1 };
+            
+            document.getElementById('playMode').value = state.mode;
+            document.getElementById('courtCountDisplay').innerText = state.numCourts;
+            document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
+            
+            updateRulesUI();
+            render(false);
+        }
+    });
 
     // --- 4. CORE APP FUNCTIONS ---
     function showMatchPopup(courtName, teamA, teamB) {
@@ -365,6 +368,7 @@ stateRef.on('value', (snapshot) => {
         state.sessionActive = false;
         state.players = [];
         state.courts = [];
+        state.lastUpdate = { timestamp: Date.now(), courtIdx: -1 };
         pushToCloud();
     }
 
@@ -418,18 +422,19 @@ stateRef.on('value', (snapshot) => {
                 else c.teamB.push(state.players.shift());
             }
             if(newlyFilled) {
-                triggerCourtBlink(idx);
-                showMatchPopup(c.name, c.teamA, c.teamB);
+                // Set the global update state so other devices trigger effects
+                state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
             }
         });
     }
 
     function triggerCourtBlink(idx) {
         blinkingCourts.add(idx);
+        render(false); // Update UI to show blink
         setTimeout(() => {
             blinkingCourts.delete(idx);
             render(false);
-        }, 5000); // Blink for 5 seconds
+        }, 5000); 
     }
 
     function handlePlayerClick(cIdx, pId, team) {
@@ -520,7 +525,6 @@ stateRef.on('value', (snapshot) => {
         state.courts.forEach((c, i) => {
             const isFull = (c.teamA.length + c.teamB.length) === 4;
             const courtDiv = document.createElement('div');
-            // ADD BLINK CLASS IF INDEX IN SET
             courtDiv.className = `court ${blinkingCourts.has(i) ? 'blink-update' : ''}`;
             
             const renderTeam = (teamArr, teamChar) => teamArr.map(p => `
