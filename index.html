@@ -97,19 +97,37 @@
             border-radius: 15px;
             padding: 20px;
             background: white;
+            transition: background-color 0.5s ease;
         }
 
-        .court-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
-
-        .court-name-input {
-            font-size: 1.4rem;
-            font-weight: bold;
-            border: none;
-            background: transparent;
-            width: 80%;
+        /* NEW: Court Blink Animation */
+        .blink-update {
+            animation: yellowPulse 1.5s infinite;
         }
 
-        .is-admin .court-name-input { border-bottom: 1px dashed #ccc; }
+        @keyframes yellowPulse {
+            0% { background-color: white; }
+            50% { background-color: #fffde7; border-color: #fbc02d; }
+            100% { background-color: white; }
+        }
+
+        /* NEW: Match Popup Notification */
+        #matchNotification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            background: var(--dark);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 3px solid var(--accent);
+            text-align: center;
+            display: none;
+            min-width: 300px;
+        }
 
         .match-area {
             display: grid;
@@ -168,6 +186,11 @@
     </style>
 </head>
 <body class="user-mode">
+
+<div id="matchNotification">
+    <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--accent);">Next Match Up</div>
+    <div id="matchNames" style="font-size: 1.2rem; font-weight: bold; margin-top: 5px;"></div>
+</div>
 
 <header>
     <h1>Pickleball Open Play</h1>
@@ -228,7 +251,7 @@
 </div>
 
 <script>
-    // --- 1. CONFIGURATION (PASTE YOUR FIREBASE CONFIG HERE) ---
+    // --- 1. CONFIGURATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyDcXbm3UCGro4A3NPEEAHfp6ngNQ8ZtMUQ",
     authDomain: "pickleplay-59ba8.firebaseapp.com",
@@ -239,7 +262,6 @@ const firebaseConfig = {
     appId: "1:167188727754:web:783381a771775130e17133"
   };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const stateRef = db.ref('pickleball_state');
@@ -254,6 +276,7 @@ const firebaseConfig = {
         courts: [] 
     };
     let selectedPlayer = null; 
+    let blinkingCourts = new Set(); // To track which courts should blink
 
     // --- 3. SYNC LOGIC ---
     function pushToCloud() {
@@ -275,17 +298,27 @@ const firebaseConfig = {
             state.players = cloudData.players || [];
             state.courts = cloudData.courts || [];
             
-            // Sync UI inputs that aren't reactive
             document.getElementById('playMode').value = state.mode;
             document.getElementById('courtCountDisplay').innerText = state.numCourts;
             document.getElementById('status-bar').innerText = state.isAdmin ? "Mode: Administrator" : "User Access";
             
             updateRulesUI();
-            render(false); // Render without triggering a push
+            render(false);
         }
     });
 
     // --- 4. CORE APP FUNCTIONS ---
+    function showMatchPopup(courtName, teamA, teamB) {
+        const names = [...teamA, ...teamB].map(p => p.name).join(' & ');
+        const el = document.getElementById('matchNotification');
+        const text = document.getElementById('matchNames');
+        
+        text.innerHTML = `<span style="color:var(--accent)">${courtName}:</span><br>${names}`;
+        el.style.display = 'block';
+        
+        setTimeout(() => { el.style.display = 'none'; }, 6000);
+    }
+
     function checkAdmin() {
         if (document.getElementById('adminPass').value === 'admin123') {
             state.isAdmin = true;
@@ -357,12 +390,26 @@ const firebaseConfig = {
             const c = state.courts.pop();
             state.players.unshift(...c.teamA, ...c.teamB);
         }
-        state.courts.forEach(c => {
+        state.courts.forEach((c, idx) => {
+            let newlyFilled = false;
             while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
+                newlyFilled = true;
                 if (c.teamA.length < 2) c.teamA.push(state.players.shift());
                 else c.teamB.push(state.players.shift());
             }
+            if(newlyFilled) {
+                triggerCourtBlink(idx);
+                showMatchPopup(c.name, c.teamA, c.teamB);
+            }
         });
+    }
+
+    function triggerCourtBlink(idx) {
+        blinkingCourts.add(idx);
+        setTimeout(() => {
+            blinkingCourts.delete(idx);
+            render(false);
+        }, 5000); // Blink for 5 seconds
     }
 
     function handlePlayerClick(cIdx, pId, team) {
@@ -453,7 +500,8 @@ const firebaseConfig = {
         state.courts.forEach((c, i) => {
             const isFull = (c.teamA.length + c.teamB.length) === 4;
             const courtDiv = document.createElement('div');
-            courtDiv.className = 'court';
+            // ADD BLINK CLASS IF INDEX IN SET
+            courtDiv.className = `court ${blinkingCourts.has(i) ? 'blink-update' : ''}`;
             
             const renderTeam = (teamArr, teamChar) => teamArr.map(p => `
                 <div class="player-slot ${selectedPlayer && selectedPlayer.pId === p.id ? 'selected-for-swap' : ''}" 
