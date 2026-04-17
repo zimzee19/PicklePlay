@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PicklePlay!</title>
+    <title>PicklebPlay!</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -55,6 +55,7 @@
             box-shadow: var(--card-shadow);
         }
 
+        /* Minimize Login CSS */
         #loginSection { overflow: hidden; transition: all 0.3s ease; }
         .login-fields { display: none; margin-top: 15px; }
         .login-fields.expanded { display: block; }
@@ -80,7 +81,6 @@
             padding: 20px;
             background: white;
             transition: background-color 0.5s ease;
-            position: relative;
         }
 
         .blink-update { animation: yellowPulse 1.5s infinite; }
@@ -156,7 +156,6 @@
                 <span id="courtCountDisplay" style="margin: 0 10px; font-weight:bold;">1</span>
                 <button class="btn btn-outline" onclick="changeCourts(1)">+</button>
             </div>
-            <button class="btn btn-danger" style="margin-top:10px; width:100%" onclick="clearAllCourts()">Clear All Courts</button>
             <button class="btn btn-outline" onclick="handleLogout()" style="margin-top:15px; width:100%">Sign Out</button>
         </section>
 
@@ -206,8 +205,7 @@
         numCourts: 1,
         players: [],
         courts: [],
-        lastUpdate: { timestamp: 0, courtIdx: -1 },
-        pendingPairing: {} // Tracks which courts are waiting for "Pair Next Match" click
+        lastUpdate: { timestamp: 0, courtIdx: -1 }
     };
     
     let selectedSwap = null; 
@@ -224,6 +222,7 @@
         state.isAdmin = !!user;
         document.body.className = user ? 'is-admin' : 'user-mode';
         document.getElementById('loginSection').style.display = user ? 'none' : 'block';
+        // Reset login toggle on logout
         if(!user) {
             document.getElementById('loginFields').classList.remove('expanded');
             document.getElementById('toggleLoginBtn').innerText = 'Admin Access';
@@ -246,8 +245,7 @@
             numCourts: state.numCourts,
             players: state.players,
             courts: state.courts,
-            lastUpdate: state.lastUpdate,
-            pendingPairing: state.pendingPairing || {}
+            lastUpdate: state.lastUpdate
         });
     }
 
@@ -267,7 +265,6 @@
             state.players = cloudData.players || [];
             state.courts = cloudData.courts || [];
             state.lastUpdate = cloudData.lastUpdate || { timestamp: 0, courtIdx: -1 };
-            state.pendingPairing = cloudData.pendingPairing || {};
             render(false);
         }
     });
@@ -295,7 +292,6 @@
         state.sessionActive = false;
         state.players = [];
         state.courts = [];
-        state.pendingPairing = {};
         state.lastUpdate = { timestamp: Date.now(), courtIdx: -1 };
         pushToCloud();
     }
@@ -309,7 +305,6 @@
         render(true);
     }
 
-    // Logic to fill courts. Only fills courts that are NOT pending manual pairing.
     function fillCourts(triggerAlerts = false) {
         if (!state.sessionActive) return;
         while (state.courts.length < state.numCourts) {
@@ -320,47 +315,18 @@
             state.players.unshift(...c.teamA, ...c.teamB);
         }
         state.courts.forEach((c, idx) => {
-            if (!state.pendingPairing[idx]) {
-                fillIndividualCourt(idx, triggerAlerts);
+            let filled = false;
+            while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
+                filled = true;
+                if (c.teamA.length < 2) c.teamA.push(state.players.shift());
+                else c.teamB.push(state.players.shift());
+            }
+            if(filled && triggerAlerts) {
+                state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
+                triggerCourtBlink(idx);
+                showMatchPopup(c.name, c.teamA, c.teamB);
             }
         });
-    }
-
-    function fillIndividualCourt(idx, triggerAlerts) {
-        const c = state.courts[idx];
-        let filled = false;
-        while ((c.teamA.length + c.teamB.length) < 4 && state.players.length > 0) {
-            filled = true;
-            if (c.teamA.length < 2) c.teamA.push(state.players.shift());
-            else c.teamB.push(state.players.shift());
-        }
-        if(filled && triggerAlerts) {
-            state.lastUpdate = { timestamp: Date.now(), courtIdx: idx };
-            triggerCourtBlink(idx);
-            showMatchPopup(c.name, c.teamA, c.teamB);
-        }
-    }
-
-    function manualPair(idx) {
-        state.pendingPairing[idx] = false;
-        fillIndividualCourt(idx, true);
-        render(true);
-    }
-
-    function clearCourt(idx) {
-        const c = state.courts[idx];
-        const returningPlayers = [...c.teamA, ...c.teamB];
-        // Put back at the FRONT of the queue
-        state.players.unshift(...returningPlayers);
-        c.teamA = [];
-        c.teamB = [];
-        state.pendingPairing[idx] = false;
-        render(true);
-    }
-
-    function clearAllCourts() {
-        if(!confirm("Clear all courts and return players to queue?")) return;
-        state.courts.forEach((_, idx) => clearCourt(idx));
     }
 
     function handleSwapClick(cIdx, pId, team) {
@@ -392,8 +358,7 @@
             const p = teamArr.splice(pIdx, 1)[0];
             p.gamesInRow = 0;
             state.players.push(p);
-            // After sitting out, try to fill from queue, unless court is pending manual pair
-            if (!state.pendingPairing[cIdx]) fillIndividualCourt(cIdx, true);
+            fillCourts(true);
             render(true);
         }
     }
@@ -402,7 +367,6 @@
         const c = state.courts[idx];
         const winners = winTeam === 'A' ? c.teamA : c.teamB;
         const losers = winTeam === 'A' ? c.teamB : c.teamA;
-        
         losers.forEach(p => { p.gamesInRow = 0; state.players.push(p); });
         
         if (state.mode === '4on') {
@@ -416,7 +380,7 @@
             c.teamB = stayers.slice(1, 2);
         }
         
-        state.pendingPairing[idx] = true; // Mark as waiting for manual pair click
+        fillCourts(true);
         render(true);
     }
 
@@ -487,24 +451,18 @@
                     </div>`;
             };
 
-            const isPending = state.pendingPairing && state.pendingPairing[i];
-
             courtDiv.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <input type="text" style="font-weight:bold; border:none; font-size:1.1rem; width:120px;" value="${c.name}" onchange="if(state.isAdmin){state.courts[${i}].name=this.value; render(true);}" ${state.isAdmin ? '' : 'readonly'}>
-                    <button class="btn btn-outline" style="font-size:0.7rem; color:var(--danger); border-color:var(--danger)" onclick="clearCourt(${i})">Clear Court</button>
+                <div style="text-align:center; margin-bottom:15px;">
+                    <input type="text" style="font-weight:bold; border:none; text-align:center; font-size:1.1rem" value="${c.name}" onchange="if(state.isAdmin){state.courts[${i}].name=this.value; render(true);}" ${state.isAdmin ? '' : 'readonly'}>
                 </div>
                 <div class="match-area">
                     <div class="team-box"><small>T1</small><hr>${c.teamA.map(p => createPlayerHtml(p, 'A')).join('')}</div>
                     <div style="text-align:center; font-weight:bold; padding-top:80px;">VS</div>
                     <div class="team-box"><small>T2</small><hr>${c.teamB.map(p => createPlayerHtml(p, 'B')).join('')}</div>
                 </div>
-                <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'A')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T1 Wins</button>
-                        <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'B')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T2 Wins</button>
-                    </div>
-                    ${isPending ? `<button class="btn btn-accent" style="width:100%; padding:12px; font-size:1rem;" onclick="manualPair(${i})">Pair Next Match</button>` : ''}
+                <div style="margin-top:20px; display:flex; gap:10px;">
+                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'A')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T1 Wins</button>
+                    <button class="btn btn-primary" style="flex:1" onclick="finishMatch(${i}, 'B')" ${(c.teamA.length+c.teamB.length)<4?'disabled':''}>T2 Wins</button>
                 </div>`;
             container.appendChild(courtDiv);
         });
